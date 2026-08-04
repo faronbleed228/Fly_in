@@ -2,11 +2,6 @@ import abc
 from typing import Optional
 
 
-class ZoneError(Exception):
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-
-
 class Zone(abc.ABC):
     def __init__(self, name: str, color: Optional[str], x: int, y: int) -> None:
         self._name = name
@@ -16,56 +11,43 @@ class Zone(abc.ABC):
 
 
 class NormalZone(Zone):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int = 1) -> None:
+    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int) -> None:
         super().__init__(name, color, x, y)
         self._max_drones = max_drones
 
 
 class RestrictedZone(Zone):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int = 1) -> None:
+    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int) -> None:
         super().__init__(name, color, x, y)
         self._max_drones = max_drones
 
 
 class PriorityZone(Zone):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int = 1) -> None:
+    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int) -> None:
         super().__init__(name, color, x, y)
         self._max_drones = max_drones
 
 
 class BlockedZone(Zone):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int) -> None:
+    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int) -> None:
         super().__init__(name, color, x, y)
 
 
 class ZoneFactory():
     def __init__(self) -> None:
         self._zone_dict = {
-            "restricted": RestrictedZone,
-            "normal": NormalZone,
-            "blocked": BlockedZone,
-            "priority": PriorityZone
+            "restricted:": RestrictedZone,
+            "normal:": NormalZone,
+            "blocked:": BlockedZone,
+            "priority:": PriorityZone
         }
-        self._coord_list = [[]]
-        self._name_list = []
 
-    def create(self, name: str,
-               x: int, y: int, metadata: dict[str, int]) -> Zone:
-
-
-def test():
-    matadata = {
-        "zone": "normal",
-        "color": "green",
-        "max_drone": 1
-
-    }
-    factory = ZoneFactory()
-    try:
-        factory.validate("zone1", 10, 10, matadata)
-    except ZoneError as e:
-        print(e)
-
-
-if __name__ == "__main__":
-    test()
+    def create(self, data_dict: dict) -> Zone:
+        name = data_dict["name"]
+        x = data_dict["x"]
+        y = data_dict["y"]
+        color = data_dict.get("color", None)
+        zone_type = data_dict.get("zone", "normal:")
+        max_drones = data_dict.get("max_drones", 1)
+        zone = self._zone_dict[zone_type](name, color, x, y, max_drones)
+        return zone

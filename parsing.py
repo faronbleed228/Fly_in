@@ -10,10 +10,30 @@ class Graph():
     def __init__(self) -> None:
         self._zone_dict: dict[str, Zone] = {}
         self.zone_factory = ZoneFactory()
+        self._start = False
+        self._end = False
 
     def add_zone(self, data_dict: dict):
         if data_dict["name"] in self._zone_dict.keys():
             raise ParsingError("Hub name already exists on line")
+        if data_dict["hub_type"] == "start_hub":
+            self.check_start_end(True, False)
+        if data_dict["hub_type"] == "end_hub":
+            self.check_start_end(False, True)
+        zone = self.zone_factory.create(data_dict)
+        self._zone_dict[data_dict["name"]] = zone
+
+    def check_start_end(self, start: bool, end: bool):
+        if start is True and self._start is False:
+            self._start = True
+        elif end is True and self._end is False:
+            self._end = True
+        elif (start is True and self._start is True) or (end is True and self._end is True):
+            raise ParsingError(
+                "Map must have only one starting and ending point. line:")
+        elif (start is False and end is False and (self._end is False or self._start is False)):
+            raise ParsingError(
+                "Map must have at least one starting and ending point(no line with one of them or both).")
 
 
 class Parsing():
@@ -46,9 +66,7 @@ class Parsing():
                     if func is None:
                         raise ParsingError(
                             f"Unknown parsing block on line {line_num}")
-                    else:
-                        ret_dict = func(line_lst, line_num)
-                        print(ret_dict)
+            self._graph.check_start_end(False, False)
 
     def hub_validate(self, line_lst: list, line_num: int):
         hub_data_dict = {}
@@ -101,7 +119,7 @@ class Parsing():
         if len(line_lst) > 4:
             hub_metadat_validate()
         hub_data_dict["hub_type"] = line_lst[0]
-        return (hub_data_dict)
+        self._graph.add_zone(hub_data_dict)
 
     def parse_pos_int(self, raw: str, e_msg: str, only_pos: bool = False) -> int:
         try:
@@ -157,7 +175,7 @@ class Parsing():
 
 
 def test():
-    parser = Parsing("./maps/hard/03_ultimate_challenge.txt")
+    parser = Parsing("01_linear_path.txt")
     try:
         parser.dispatcher()
     except ParsingError as e:
