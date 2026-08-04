@@ -1,4 +1,5 @@
-from factories import ZoneFactory, Zone
+from factories import ZoneFactory, Zone, Connection
+from typing import Any, Callable
 
 
 class ParsingError(Exception):
@@ -9,51 +10,91 @@ class ParsingError(Exception):
 class Graph():
     def __init__(self) -> None:
         self._zone_dict: dict[str, Zone] = {}
+        self._coordinates: list = []
+        self._connections: set[tuple[str, str]] = set()
+        self._connections_links: list[Connection] = []
         self.zone_factory = ZoneFactory()
         self._start = False
         self._end = False
 
+    def add_connection(self, data_dict: dict) -> None:
+        self.validate_connection(data_dict)
+        name = data_dict["connection"]
+        zone_a, zone_b = data_dict["connection"].split("-")
+        zone_a = self._zone_dict[zone_a]
+        zone_b = self._zone_dict[zone_b]
+        max_link_capacity = data_dict.get("max_link_capacity", 1)
+        connection = Connection(name, zone_a, zone_b, max_link_capacity)
+        self._connections_links.append(connection)
+        zone_a._zone_connections.append(connection)
+        zone_b._zone_connections.append(connection)
+
+    def validate_connection(self, data_dict: dict) -> None:
+        zone_a, zone_b = data_dict["connection"].split("-")
+        temp_tuple: tuple[str, str] = tuple(sorted((zone_b, zone_a)))
+        if temp_tuple in self._connections:
+            raise ParsingError("Every connection must be unique. line: ")
+        if (zone_a not in self._zone_dict.keys()
+                or zone_b not in self._zone_dict.keys()):
+            raise ParsingError(
+                "Connections must link only previously defined zones. line: ")
+        if zone_a == zone_b:
+            raise ParsingError("Connection must link different zones. line: ")
+        self._connections.add(temp_tuple)
+
     def add_zone(self, data_dict: dict):
-        if data_dict["name"] in self._zone_dict.keys():
-            raise ParsingError("Hub name already exists on line")
-        if data_dict["hub_type"] == "start_hub":
-            self.check_start_end(True, False)
-        if data_dict["hub_type"] == "end_hub":
-            self.check_start_end(False, True)
+        self.validate_zone(data_dict)
+
         zone = self.zone_factory.create(data_dict)
         self._zone_dict[data_dict["name"]] = zone
 
-    def check_start_end(self, start: bool, end: bool):
+    def validate_zone(self, data_dict: dict):
+        coord = [data_dict["x"], data_dict["y"]]
+        if (coord) in self._coordinates:
+            raise ParsingError(
+                "Coordinates of every hub must be unique. line: ")
+        self._coordinates.append(coord)
+        if data_dict["name"] in self._zone_dict.keys():
+            raise ParsingError("Hub name already exists on line: ")
+        if data_dict["hub_type"] == "start_hub:":
+            self.validate_start_end(True, False)
+        if data_dict["hub_type"] == "end_hub:":
+            self.validate_start_end(False, True)
+
+    def validate_start_end(self, start: bool, end: bool):
         if start is True and self._start is False:
             self._start = True
         elif end is True and self._end is False:
             self._end = True
-        elif (start is True and self._start is True) or (end is True and self._end is True):
+        elif ((start is True and self._start is True)
+              or (end is True and self._end is True)):
             raise ParsingError(
-                "Map must have only one starting and ending point. line:")
-        elif (start is False and end is False and (self._end is False or self._start is False)):
+                "Map must have only one starting and ending point. line: ")
+        elif (start is False and end is False
+              and (self._end is False or self._start is False)):
             raise ParsingError(
-                "Map must have at least one starting and ending point(no line with one of them or both).")
+                "Map must have at least one starting and ending point "
+                "(no line with one of them or both). line: ")
 
 
 class Parsing():
     def __init__(self, file_name: str) -> None:
-        self._file_name = file_name
-        self._pars_dict = {
+        self._file_name: str = file_name
+        self._pars_dict: dict[str, Callable] = {
             "start_hub:": self.hub_validate,
             "end_hub:": self.hub_validate,
             "hub:": self.hub_validate,
             "connection:": self.connection_validate,
             "nb_drones:": self.nb_drones_validate
         }
-        self.zone_list = ["restricted",
-                          "normal",
-                          "blocked",
-                          "priority"]
+        self.zone_list: list[str] = ["restricted",
+                                     "normal",
+                                     "blocked",
+                                     "priority"]
         self._graph = Graph()
         self._nb_drones = 0
 
-    def dispatcher(self):
+    def dispatcher(self) -> None:
         with open(self._file_name) as fd:
             for line_num, line in enumerate(fd, 1):
                 line_lst = line.split()
@@ -66,26 +107,31 @@ class Parsing():
                     if func is None:
                         raise ParsingError(
                             f"Unknown parsing block on line {line_num}")
-            self._graph.check_start_end(False, False)
+                    func(line_lst, line_num)
+            self._graph.validate_start_end(False, False)
 
-    def hub_validate(self, line_lst: list, line_num: int):
-        hub_data_dict = {}
+    def hub_validate(self, line_lst: list[str], line_num: int) -> None:
+        hub_data_dict: dict[str, Any] = {}
 
-        def hub_metadat_validate():
-            if line_lst[4].startswith("[") and line_lst[len(line_lst) - 1].endswith("]"):
+        def hub_metadata_validate() -> None:
+            if (line_lst[4].startswith("[")
+                    and line_lst[len(line_lst) - 1].endswith("]")):
                 for line in line_lst[4:]:
                     line = line.strip("[]")
                     metadata_list = line.split("=")
                     if len(metadata_list) != 2:
                         raise ParsingError(
                             f"Hub metadata format error on line {line_num}")
-                    if (metadata_list[0] != "color" and metadata_list[0] != "max_drones"
+                    if (metadata_list[0] != "color"
+                        and metadata_list[0] != "max_drones"
                             and metadata_list[0] != "zone"):
                         raise ParsingError(
                             f"Hub metadata type error on line {line_num}")
                     if metadata_list[0] == "max_drones":
                         max_drones = self.parse_pos_int(
-                            metadata_list[1], f"Hub metadata(max_drones) error on line {line_num}", True)
+                            metadata_list[1],
+                            f"Hub metadata(max_drones) \
+                                error on line {line_num}", True)
                         hub_data_dict["max_drones"] = max_drones
                     elif metadata_list[0] == "zone":
                         if (metadata_list[1] not in self.zone_list):
@@ -117,11 +163,15 @@ class Parsing():
         hub_data_dict["x"] = x
         hub_data_dict["y"] = y
         if len(line_lst) > 4:
-            hub_metadat_validate()
+            hub_metadata_validate()
         hub_data_dict["hub_type"] = line_lst[0]
-        self._graph.add_zone(hub_data_dict)
+        try:
+            self._graph.add_zone(hub_data_dict)
+        except ParsingError as e:
+            raise ParsingError(f"{e}{line_num}")
 
-    def parse_pos_int(self, raw: str, e_msg: str, only_pos: bool = False) -> int:
+    def parse_pos_int(self, raw: str, e_msg: str,
+                      only_pos: bool = False) -> int:
         try:
             num = int(raw)
         except ValueError:
@@ -132,11 +182,12 @@ class Parsing():
                     raise ParsingError(e_msg)
         return num
 
-    def connection_validate(self, line_lst: list, line_num: int) -> dict:
-        con_data_dict = {}
+    def connection_validate(self, line_lst: list[str], line_num: int) -> None:
+        con_data_dict: dict[str, Any] = {}
 
         def metadata_validate():
-            if line_lst[2].startswith("[") and line_lst[len(line_lst) - 1].endswith("]"):
+            if (line_lst[2].startswith("[")
+                    and line_lst[len(line_lst) - 1].endswith("]")):
                 for data in line_lst[2:]:
                     data = data.strip("[]")
                     data = data.split("=")
@@ -147,14 +198,16 @@ class Parsing():
                         raise ParsingError(
                             f"Connection metadata error on line {line_num}")
                     max_link_capacity = self.parse_pos_int(
-                        data[1], f"Connection metadata error on line {line_num}", True)
+                        data[1],
+                        f"Connection metadata error on line {line_num}", True)
                     con_data_dict["max_link_capacity"] = max_link_capacity
             else:
                 raise ParsingError(
                     f"Connection metadata error on line {line_num}")
         if self._nb_drones == 0:
             raise ParsingError(
-                f"Connection validation before nb_drones defined on line {line_num}")
+                f"Connection validation before \
+                nb_drones defined on line {line_num}")
         if len(line_lst) < 2:
             raise ParsingError(f"Connection format error on line {line_num}")
         connection = line_lst[1].split("-")
@@ -163,9 +216,12 @@ class Parsing():
         con_data_dict["connection"] = line_lst[1]
         if len(line_lst) > 2:
             metadata_validate()
-        return con_data_dict
+        try:
+            self._graph.add_connection(con_data_dict)
+        except ParsingError as e:
+            raise ParsingError(f"{e}{line_num}")
 
-    def nb_drones_validate(self, line_lst: list, line_num: int):
+    def nb_drones_validate(self, line_lst: list[str], line_num: int):
         if len(line_lst) != 2:
             raise ParsingError(
                 f"Nb_drones format error on line {line_num}")
@@ -180,6 +236,9 @@ def test():
         parser.dispatcher()
     except ParsingError as e:
         print(e)
+    graph = parser._graph
+    print(graph._zone_dict)
+    print(graph._coordinates)
 
 
 if __name__ == "__main__":

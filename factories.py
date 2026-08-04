@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import Optional, Any
 
 
 class Zone(abc.ABC):
@@ -8,28 +8,43 @@ class Zone(abc.ABC):
         self._color = color
         self._x = x
         self._y = y
+        self._zone_connections: list[Connection] = []
+
+
+class Connection():
+    def __init__(self, name: str, zone_a: Zone, zone_b: Zone,
+                 max_link_capacity: int) -> None:
+        self._name = name
+        self.zone_a = zone_a
+        self.zone_b = zone_b
+        self._capacity = max_link_capacity
+        self._occupied = 0
 
 
 class NormalZone(Zone):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int) -> None:
+    def __init__(self, name: str, color: Optional[str],
+                 x: int, y: int, max_drones: int) -> None:
         super().__init__(name, color, x, y)
         self._max_drones = max_drones
 
 
 class RestrictedZone(Zone):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int) -> None:
+    def __init__(self, name: str, color: Optional[str],
+                 x: int, y: int, max_drones: int) -> None:
         super().__init__(name, color, x, y)
         self._max_drones = max_drones
 
 
 class PriorityZone(Zone):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int) -> None:
+    def __init__(self, name: str, color: Optional[str],
+                 x: int, y: int, max_drones: int) -> None:
         super().__init__(name, color, x, y)
         self._max_drones = max_drones
 
 
 class BlockedZone(Zone):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int, max_drones: int) -> None:
+    def __init__(self, name: str, color: Optional[str],
+                 x: int, y: int, max_drones: int) -> None:
         super().__init__(name, color, x, y)
 
 
