@@ -1,4 +1,4 @@
-from factories import ZoneFactory, Zone, Connection
+from factories import ZoneFactory, Zone, Connection, Drone
 from typing import Any, Callable
 
 
@@ -10,12 +10,13 @@ class ParsingError(Exception):
 class Graph():
     def __init__(self) -> None:
         self._zone_dict: dict[str, Zone] = {}
+        self._connections_links: list[Connection] = []
+        self._drones_lst: list[Drone] = []
         self._coordinates: list = []
         self._connections: set[tuple[str, str]] = set()
-        self._connections_links: list[Connection] = []
-        self.zone_factory = ZoneFactory()
         self._start = False
         self._end = False
+        self.zone_factory = ZoneFactory()
 
     def add_connection(self, data_dict: dict) -> None:
         self.validate_connection(data_dict)
@@ -76,6 +77,14 @@ class Graph():
                 "Map must have at least one starting and ending point "
                 "(no line with one of them or both). line: ")
 
+    def create_drones(self, nb_drones: int) -> None:
+        start_hub = self._zone_dict["start"]
+        end_hub = self._zone_dict["goal"]
+        for i in range(nb_drones):
+            id = "D" + str(i)
+            drone = Drone(id, start_hub, end_hub)
+            self._drones_lst.append(drone)
+
 
 class Parsing():
     def __init__(self, file_name: str) -> None:
@@ -109,6 +118,7 @@ class Parsing():
                             f"Unknown parsing block on line {line_num}")
                     func(line_lst, line_num)
             self._graph.validate_start_end(False, False)
+            self._graph.create_drones(self._nb_drones)
 
     def hub_validate(self, line_lst: list[str], line_num: int) -> None:
         hub_data_dict: dict[str, Any] = {}
@@ -238,6 +248,7 @@ def test():
         print(e)
     graph = parser._graph
     print(graph._zone_dict)
+    print(graph._drones_lst)
     print(graph._coordinates)
 
 

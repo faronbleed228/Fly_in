@@ -1,9 +1,18 @@
 import abc
 from typing import Optional, Any
+from enum import Enum
+from collections import deque
+
+
+class DroneState(Enum):
+    ACTIVE = 0
+    TRANSIT = 1
+    ARRIVED = 2
 
 
 class Zone(abc.ABC):
-    def __init__(self, name: str, color: Optional[str], x: int, y: int) -> None:
+    def __init__(self, name: str,
+                 color: Optional[str], x: int, y: int) -> None:
         self._name = name
         self._color = color
         self._x = x
@@ -66,3 +75,13 @@ class ZoneFactory():
         max_drones = data_dict.get("max_drones", 1)
         zone = self._zone_dict[zone_type](name, color, x, y, max_drones)
         return zone
+
+
+class Drone():
+    def __init__(self, id: str, cur_pos: Zone, end_hub: Zone) -> None:
+        self._id = id
+        self._cur_pos = cur_pos
+        self._end_hub = end_hub
+        self._state = DroneState.ACTIVE
+        self._path: deque[Zone] = deque([])
+        self._turns_left = 0
