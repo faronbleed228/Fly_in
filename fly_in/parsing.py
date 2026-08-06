@@ -1,4 +1,4 @@
-from factories import ZoneFactory, Zone, Connection, Drone
+from .factories import ZoneFactory, Zone, Connection, Drone
 from typing import Any, Callable
 
 
@@ -57,9 +57,9 @@ class Graph():
         self._coordinates.append(coord)
         if data_dict["name"] in self._zone_dict.keys():
             raise ParsingError("Hub name already exists on line: ")
-        if data_dict["hub_type"] == "start_hub:":
+        if data_dict["hub_type"] == "start_hub":
             self.validate_start_end(True, False)
-        if data_dict["hub_type"] == "end_hub:":
+        if data_dict["hub_type"] == "end_hub":
             self.validate_start_end(False, True)
 
     def validate_start_end(self, start: bool, end: bool):
@@ -174,7 +174,7 @@ class Parsing():
         hub_data_dict["y"] = y
         if len(line_lst) > 4:
             hub_metadata_validate()
-        hub_data_dict["hub_type"] = line_lst[0]
+        hub_data_dict["hub_type"] = line_lst[0].strip(":")
         try:
             self._graph.add_zone(hub_data_dict)
         except ParsingError as e:
