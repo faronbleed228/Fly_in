@@ -1,5 +1,5 @@
 from __future__ import annotations
-import abc
+from abc import ABC, abstractmethod
 from typing import Optional
 from enum import Enum
 from collections import deque
@@ -23,7 +23,7 @@ class Connection():
         self._cur_link_capacity = 0
 
 
-class Zone(abc.ABC):
+class Zone(ABC):
     def __init__(self, name: str,
                  color: Optional[str], x: int,
                  y: int, max_drones: int, hub_type: str) -> None:
@@ -36,11 +36,15 @@ class Zone(abc.ABC):
         self._cur_capacity = 0
         self._drone_list: list[Drone] = []
         self._zone_connections: list[Connection] = []
+        self._zone_blocked = False
 
+    @abstractmethod
     def can_enter_zone(self) -> bool:
-        if self._hub_type == "start_hub" or self._hub_type == "end_hub":
-            return True
-        return self._cur_capacity < self._max_capacity
+        pass
+
+    @abstractmethod
+    def get_movement_cost(self) -> float:
+        pass
 
     def can_enter_link(self, link: Connection) -> bool:
         if link._cur_link_capacity < link._max_link_capacity:
@@ -49,6 +53,8 @@ class Zone(abc.ABC):
 
     def get_cur_link(self, drone: Drone) -> Connection:
         drone_zone = drone._cur_pos
+        if isinstance(drone_zone, Connection):
+            return drone_zone
         for connection in self._zone_connections:
             for drone_zone_conection in drone_zone._zone_connections:
                 if drone_zone_conection == connection:
@@ -67,11 +73,29 @@ class NormalZone(Zone):
                  x: int, y: int, max_drones: int, hub_type: str) -> None:
         super().__init__(name, color, x, y, max_drones, hub_type)
 
+    def can_enter_zone(self) -> bool:
+        if self._hub_type == "start_hub" or self._hub_type == "end_hub":
+            return True
+        return self._cur_capacity < self._max_capacity
+
+    def get_movement_cost(self) -> int:
+        return 1
+
 
 class RestrictedZone(Zone):
     def __init__(self, name: str, color: Optional[str],
                  x: int, y: int, max_drones: int, hub_type: str) -> None:
         super().__init__(name, color, x, y, max_drones, hub_type)
+
+    def can_enter_zone(self) -> bool:
+        if self._zone_blocked is not None and self.:
+            return False
+        if self._hub_type == "start_hub" or self._hub_type == "end_hub":
+            return True
+        return self._cur_capacity < self._max_capacity
+
+    def get_movement_cost(self) -> float:
+        return 2
 
 
 class PriorityZone(Zone):
@@ -79,20 +103,34 @@ class PriorityZone(Zone):
                  x: int, y: int, max_drones: int, hub_type: str) -> None:
         super().__init__(name, color, x, y, max_drones, hub_type)
 
+    def can_enter_zone(self) -> bool:
+        if self._hub_type == "start_hub" or self._hub_type == "end_hub":
+            return True
+        return self._cur_capacity < self._max_capacity
+
+    def get_movement_cost(self) -> float:
+        return 0.5
+
 
 class BlockedZone(Zone):
     def __init__(self, name: str, color: Optional[str],
                  x: int, y: int, max_drones: int, hub_type: str) -> None:
         super().__init__(name, color, x, y, max_drones, hub_type)
 
+    def can_enter_zone(self) -> bool:
+        return False
+
+    def get_movement_cost(self) -> float:
+        return float('inf')
+
 
 class ZoneFactory():
     def __init__(self) -> None:
         self._zone_dict = {
-            "restricted:": RestrictedZone,
-            "normal:": NormalZone,
-            "blocked:": BlockedZone,
-            "priority:": PriorityZone
+            "restricted": RestrictedZone,
+            "normal": NormalZone,
+            "blocked": BlockedZone,
+            "priority": PriorityZone
         }
 
     def create(self, data_dict: dict) -> Zone:
@@ -101,7 +139,7 @@ class ZoneFactory():
         x = data_dict["x"]
         y = data_dict["y"]
         color = data_dict.get("color", None)
-        zone_type = data_dict.get("zone", "normal:")
+        zone_type = data_dict.get("zone", "normal")
         max_drones = data_dict.get("max_drones", 1)
         zone = self._zone_dict[zone_type](
             name, color, x, y, max_drones, hub_type)
@@ -111,7 +149,7 @@ class ZoneFactory():
 class Drone():
     def __init__(self, id: str, cur_pos: Zone, end_hub: Zone) -> None:
         self._id = id
-        self._cur_pos = cur_pos
+        self._cur_pos: Zone | Connection = cur_pos
         self._end_hub = end_hub
         self._state = DroneState.ACTIVE
         self._path: deque[Zone] = deque([])
@@ -120,14 +158,31 @@ class Drone():
 
     def move_drone(self) -> None:
         zone = self._path.popleft()
-        if self._cur_pos._hub_type != "start_hub":
-            self._cur_pos._cur_capacity -= 1
-        self._cur_pos = zone
-        self._turns_left -= 1
-        if zone != self._end_hub:
-            zone._cur_capacity += 1
-        else:
-            self._state = DroneState.ARRIVED
+        if isinstance(self._cur_pos, Zone):
+            if self._cur_pos._hub_type != "start_hub":
+                self._cur_pos._cur_capacity -= 1
+            self._cur_pos._drone_list.remove(self)
+            zone._drone_list.append(self)
+            self._cur_pos = zone
+            self._turns_left -= 1
+            if zone != self._end_hub:
+                zone._cur_capacity += 1
+
+                self._state = DroneState.CONFIRMED
+                self._waiting = 0
+            else:
+                self._state = DroneState.ARRIVED
+
+    def move_drone_restricted(self, connection: Connection) -> None:
+        if isinstance(self._cur_pos, Zone):
+            goal_zone = self._path[0]
+            if self._cur_pos._hub_type != "start_hub":
+                self._cur_pos._cur_capacity -= 1
+            self._cur_pos = connection
+            goal_zone._zone_blocked = True
+        elif self._state is DroneState.TRANSIT:
+            goal_zone = self._path.popleft()
+            goal_zone._zone_blocked = False
 
     def check_drone_state(self, drone_list: list[Drone]) -> None:
         if self._state == DroneState.ARRIVED:

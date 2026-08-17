@@ -31,11 +31,17 @@ class Simulation():
         for drone in self._drone_list:
             target_zone = drone._path[0]
             intent_dict[target_zone].append(drone)
+            logger.info(
+                f"Added intention of drone: {drone._id} to zone: {target_zone._name}")
         return intent_dict
 
     def move_logic(self, intent_dict: defaultdict[Zone, list[Drone]]) -> None:
         def sort_drone(drone: Drone) -> tuple[int, int]:
-            return (drone._turns_left, drone._waiting * -1)
+            if drone._state is DroneState.TRANSIT:
+                turns_left = -1
+            else:
+                turns_left = drone._turns_left
+            return (turns_left, drone._waiting * -1)
 
         def clear_intention() -> None:
             for zone in done_zone:
@@ -50,36 +56,48 @@ class Simulation():
                 logger.info(
                     f"Making decision for dest_zone: {dest_zone._name}")
                 if dest_zone.active_drones() is False:
+                    logger.info(
+                        f"Zone: {dest_zone._name} doesnt have any active drones.")
                     decision = True
                     done_zone.append(dest_zone)
                     drone_list.sort(key=sort_drone)
                     for drone in drone_list:
-                        self.turn(drone, dest_zone)
+                        self.turn_logic(drone, dest_zone)
+                else:
+                    logger.info(
+                        f"Zone: {dest_zone._name} was skipped due to having active drones.")
             clear_intention()
 
-    def turn(self, drone: Drone, zone: Zone) -> None:
+    def turn_logic(self, drone: Drone, zone: Zone) -> None:
         cur_link = zone.get_cur_link(drone)
         if (zone.can_enter_zone() is True
                 and zone.can_enter_link(cur_link) is True):
-            logger.info(f"Drone:{drone._id} is confirmed and moved")
-            drone._state = DroneState.CONFIRMED
-            drone._waiting = 0
-            cur_link._cur_link_capacity += 1
-
-            drone.move_drone()
-            self.log_append(drone, zone)
-            logger.info(
-                f"Drone:{drone._id} has {drone._turns_left} turn left.")
+            if zone.get_movement_cost() == 2:
+                if 
+                logger.info(
+                    f"Drone:{drone._id} is confirmed and moved via {cur_link._name}(restricted_path)")
+                cur_link._cur_link_capacity += 1
+                if zone._zone_blocked is False:
+                    drone.move_drone_restricted(cur_link)
+                    self.log_append(drone, cur_link._name)
+                elif
+            else:
+                logger.info(
+                    f"Drone:{drone._id} is confirmed and moved via {cur_link._name}")
+                cur_link._cur_link_capacity += 1
+                drone.move_drone()
+                self.log_append(drone, zone._name)
+                logger.info(
+                    f"Drone:{drone._id} has {drone._turns_left} turn left.")
 
         else:
             logger.info(f"Drone:{drone._id} is Waiting")
             drone._state = DroneState.WAITING
             drone._waiting += 1
 
-    def log_append(self, drone: Drone, dest_zone: Zone) -> None:
+    def log_append(self, drone: Drone, dest_zone: str) -> None:
         drone_id = drone._id
-        zone_name = dest_zone._name
-        self.log_list.append(f"{drone_id}-{zone_name}")
+        self.log_list.append(f"{drone_id}-{dest_zone}")
 
     def reset_drone_status(self) -> None:
         for drone in self._drone_list:

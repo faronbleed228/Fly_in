@@ -1,5 +1,8 @@
 from .factories import ZoneFactory, Zone, Connection, Drone
 from typing import Any, Callable
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ParsingError(Exception):
@@ -83,6 +86,7 @@ class Graph():
         for i in range(nb_drones):
             id = "D" + str(i)
             drone = Drone(id, start_hub, end_hub)
+            start_hub._drone_list.append(drone)
             self._drones_lst.append(drone)
 
 
@@ -175,6 +179,7 @@ class Parsing():
         if len(line_lst) > 4:
             hub_metadata_validate()
         hub_data_dict["hub_type"] = line_lst[0].strip(":")
+        logger.debug(f"Created hub with this data {hub_data_dict}")
         try:
             self._graph.add_zone(hub_data_dict)
         except ParsingError as e:
@@ -226,6 +231,7 @@ class Parsing():
         con_data_dict["connection"] = line_lst[1]
         if len(line_lst) > 2:
             metadata_validate()
+        logger.debug(f"Created  with this data {con_data_dict}")
         try:
             self._graph.add_connection(con_data_dict)
         except ParsingError as e:

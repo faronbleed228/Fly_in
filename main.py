@@ -6,7 +6,7 @@ import fly_in
 file_handler = logging.FileHandler("app.log", mode="w", encoding="utf-8")
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[file_handler]  # Передаем только файл, без консольного хендлера
