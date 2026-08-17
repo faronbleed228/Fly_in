@@ -1,7 +1,20 @@
+import logging
 import fly_in
 
 
+# mode="w" очищает и перезаписывает файл при каждом запуске
+file_handler = logging.FileHandler("app.log", mode="w", encoding="utf-8")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[file_handler]  # Передаем только файл, без консольного хендлера
+)
+
+
 def main():
+
     parser = fly_in.Parsing("01_linear_path.txt")
     try:
         parser.dispatcher()
@@ -13,6 +26,7 @@ def main():
     sim = fly_in.Simulation(graph)
     for drone in graph._drones_lst:
         sim.test_path(drone, graph._zone_dict)
+
     sim.run()
 
 
@@ -40,4 +54,5 @@ def print_connection_data(con_list: list[fly_in.Connection]):
 
 
 if __name__ == "__main__":
+    logging.info("Main modul is up")
     main()

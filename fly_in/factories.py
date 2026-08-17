@@ -9,6 +9,8 @@ class DroneState(Enum):
     ACTIVE = 0
     TRANSIT = 1
     ARRIVED = 2
+    CONFIRMED = 3
+    WAITING = 4
 
 
 class Zone(abc.ABC):
@@ -22,13 +24,19 @@ class Zone(abc.ABC):
         self._y = y
         self._max_capacity = max_drones
         self._cur_capacity = 0
-
+        self._drone_list: list[Drone] = []
         self._zone_connections: list[Connection] = []
 
     def can_enter_zone(self) -> bool:
         if self._hub_type == "start_hub" or self._hub_type == "end_hub":
             return True
         return self._cur_capacity < self._max_capacity
+
+    def active_drones(self) -> bool:
+        for drone in self._drone_list:
+            if drone._state is DroneState.ACTIVE:
+                return True
+        return False
 
 
 class Connection():
@@ -95,12 +103,14 @@ class Drone():
         self._state = DroneState.ACTIVE
         self._path: deque[Zone] = deque([])
         self._turns_left = 0
+        self._waiting = 0
 
     def move_drone(self) -> None:
         zone = self._path.popleft()
         if self._cur_pos._hub_type != "start_hub":
             self._cur_pos._cur_capacity -= 1
         self._cur_pos = zone
+        self._turns_left -= 1
         if zone != self._end_hub:
             zone._cur_capacity += 1
         else:
