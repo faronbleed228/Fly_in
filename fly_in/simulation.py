@@ -17,6 +17,7 @@ class Simulation():
             intent_dict = self.collect_intentions()
             self.move_logic(intent_dict)
             self.reset_drone_status()
+            self.reset_link_status()
             log_output = " ".join(self.log_list)
             self.log_list.clear()
             print(log_output)
@@ -57,10 +58,14 @@ class Simulation():
             clear_intention()
 
     def turn(self, drone: Drone, zone: Zone) -> None:
-        if zone.can_enter_zone() is True:
+        cur_link = zone.get_cur_link(drone)
+        if (zone.can_enter_zone() is True
+                and zone.can_enter_link(cur_link) is True):
             logger.info(f"Drone:{drone._id} is confirmed and moved")
             drone._state = DroneState.CONFIRMED
             drone._waiting = 0
+            cur_link._cur_link_capacity += 1
+
             drone.move_drone()
             self.log_append(drone, zone)
             logger.info(
@@ -83,6 +88,10 @@ class Simulation():
                 drone._state = DroneState.ACTIVE
             elif drone._state is DroneState.ARRIVED:
                 self._drone_list.remove(drone)
+
+    def reset_link_status(self) -> None:
+        for link in self._graph._connections_links:
+            link._cur_link_capacity = 0
 
     def test_path(self, drone: Drone, zone_dict: dict[str, Zone]) -> None:
         zone_list = deque([zone for zone in zone_dict.values()

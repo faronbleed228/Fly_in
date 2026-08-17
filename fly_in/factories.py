@@ -13,6 +13,16 @@ class DroneState(Enum):
     WAITING = 4
 
 
+class Connection():
+    def __init__(self, name: str, zone_a: Zone, zone_b: Zone,
+                 max_link_capacity: int = 1) -> None:
+        self._name = name
+        self.zone_a = zone_a
+        self.zone_b = zone_b
+        self._max_link_capacity = max_link_capacity
+        self._cur_link_capacity = 0
+
+
 class Zone(abc.ABC):
     def __init__(self, name: str,
                  color: Optional[str], x: int,
@@ -32,21 +42,24 @@ class Zone(abc.ABC):
             return True
         return self._cur_capacity < self._max_capacity
 
+    def can_enter_link(self, link: Connection) -> bool:
+        if link._cur_link_capacity < link._max_link_capacity:
+            return True
+        return False
+
+    def get_cur_link(self, drone: Drone) -> Connection:
+        drone_zone = drone._cur_pos
+        for connection in self._zone_connections:
+            for drone_zone_conection in drone_zone._zone_connections:
+                if drone_zone_conection == connection:
+                    return connection
+        return connection
+
     def active_drones(self) -> bool:
         for drone in self._drone_list:
             if drone._state is DroneState.ACTIVE:
                 return True
         return False
-
-
-class Connection():
-    def __init__(self, name: str, zone_a: Zone, zone_b: Zone,
-                 max_link_capacity: int) -> None:
-        self._name = name
-        self.zone_a = zone_a
-        self.zone_b = zone_b
-        self._max_link_capacity = max_link_capacity
-        self._cur_link_capacity = 0
 
 
 class NormalZone(Zone):
