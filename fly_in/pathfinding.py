@@ -17,6 +17,8 @@ class Pathfinder():
         self._n_drones = n_drones
         self._distances: dict[str, float] = {}
         self.paths: dict[str, list[Zone]] = {}
+        self.penalty_dict: dict[Zone, float] = {
+            zone: 0.0 for zone in self._zone_list}
 
     def pathfinder(self) -> list[Zone] | None:
         self.data_structure()
@@ -30,6 +32,7 @@ class Pathfinder():
             logger.debug(f"Current path is {cur_path}")
             if cur_name == self._end_zone._name:
                 logger.debug("Found the end")
+                self.weight_penalty(cur_path)
                 return cur_path
             if cur_dist > self._distances[cur_name]:
                 logger.debug(
@@ -60,3 +63,23 @@ class Pathfinder():
                 self._distances[zone._name] = float('inf')
             else:
                 self._distances[zone._name] = float('inf')
+
+    def weight_penalty(self, path: list[Zone]) -> None:
+        for i in range(len(path) - 1):
+            cur_zone = path[i]
+            next_zone = path[i+1]
+            if cur_zone._hub_type == "start_hub" or next_zone._hub_type == "end_hub":
+                continue
+            else:
+                link = self.get_penalty_link(cur_zone, next_zone)
+                if link is not None:
+                    max_capacity = min(next_zone._max_capacity,
+                                       link._max_link_capacity)
+                    cur_penalty = self.penalty_dict[next_zone]
+                    self.penalty_dict[next_zone] = (cur_penalty + 0.5) * 1.1
+
+    def get_penalty_link(self, zone_a: Zone, zone_b: Zone) -> Connection | None:
+        for link in zone_a._zone_connections:
+            if link.zone_b == zone_b or link.zone_a == zone_b:
+                return link
+        return None
