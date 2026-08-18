@@ -70,18 +70,25 @@ class Simulation():
 
     def turn_logic(self, drone: Drone, zone: Zone) -> None:
         cur_link = zone.get_cur_link(drone)
-        if (zone.can_enter_zone() is True
+        if drone._state is DroneState.TRANSIT:
+            cur_link._cur_link_capacity -= 1
+            drone.move_drone_restricted(cur_link)
+            self.log_append(drone, zone._name)
+        elif (zone.can_enter_zone() is True
                 and zone.can_enter_link(cur_link) is True):
             if zone.get_movement_cost() == 2:
-                if 
-                logger.info(
-                    f"Drone:{drone._id} is confirmed and moved via {cur_link._name}(restricted_path)")
-                cur_link._cur_link_capacity += 1
-                if zone._zone_blocked is False:
+                if (drone._state is DroneState.ACTIVE):
+                    logger.info(
+                        f"Drone:{drone._id} is confirmed and moved to {cur_link._name}(restricted_path)")
+                    cur_link._cur_link_capacity += 1
                     drone.move_drone_restricted(cur_link)
                     self.log_append(drone, cur_link._name)
-                elif
-            else:
+                else:
+                    logger.info(f"Drone:{drone._id} is Waiting")
+                    drone._state = DroneState.WAITING
+                    drone._waiting += 1
+
+            elif zone.get_movement_cost() != 2:
                 logger.info(
                     f"Drone:{drone._id} is confirmed and moved via {cur_link._name}")
                 cur_link._cur_link_capacity += 1
@@ -89,7 +96,6 @@ class Simulation():
                 self.log_append(drone, zone._name)
                 logger.info(
                     f"Drone:{drone._id} has {drone._turns_left} turn left.")
-
         else:
             logger.info(f"Drone:{drone._id} is Waiting")
             drone._state = DroneState.WAITING

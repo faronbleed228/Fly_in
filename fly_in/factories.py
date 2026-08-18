@@ -3,6 +3,9 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from enum import Enum
 from collections import deque
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DroneState(Enum):
@@ -21,6 +24,7 @@ class Connection():
         self.zone_b = zone_b
         self._max_link_capacity = max_link_capacity
         self._cur_link_capacity = 0
+        self._drone_list: list[Drone] = []
 
 
 class Zone(ABC):
@@ -67,6 +71,15 @@ class Zone(ABC):
                 return True
         return False
 
+    def get_neighbours(self) -> list[Zone]:
+        zone_list = []
+        for link in self._zone_connections:
+            if self is link.zone_a:
+                zone_list.append(link.zone_b)
+            else:
+                zone_list.append(link.zone_a)
+        return zone_list
+
 
 class NormalZone(Zone):
     def __init__(self, name: str, color: Optional[str],
@@ -88,8 +101,6 @@ class RestrictedZone(Zone):
         super().__init__(name, color, x, y, max_drones, hub_type)
 
     def can_enter_zone(self) -> bool:
-        if self._zone_blocked is not None and self.:
-            return False
         if self._hub_type == "start_hub" or self._hub_type == "end_hub":
             return True
         return self._cur_capacity < self._max_capacity
@@ -175,14 +186,30 @@ class Drone():
 
     def move_drone_restricted(self, connection: Connection) -> None:
         if isinstance(self._cur_pos, Zone):
+            logger.debug(
+                f"Drone {self._id} entered connection {connection._name} and has to wait there")
             goal_zone = self._path[0]
             if self._cur_pos._hub_type != "start_hub":
                 self._cur_pos._cur_capacity -= 1
+            self._cur_pos._drone_list.remove(self)
+            connection._drone_list.append(self)
             self._cur_pos = connection
-            goal_zone._zone_blocked = True
+            if goal_zone != self._end_hub:
+                goal_zone._cur_capacity += 1
+            self._state = DroneState.TRANSIT
         elif self._state is DroneState.TRANSIT:
             goal_zone = self._path.popleft()
-            goal_zone._zone_blocked = False
+            connection._drone_list.remove(self)
+            goal_zone._drone_list.append(self)
+            self._turns_left -= 1
+            self._cur_pos = goal_zone
+            logger.debug(
+                f"Drone {self._id} left connection {connection._name} and entered restricted zone {goal_zone}")
+            if goal_zone != self._end_hub:
+                self._state = DroneState.CONFIRMED
+                self._waiting = 0
+            else:
+                self._state = DroneState.ARRIVED
 
     def check_drone_state(self, drone_list: list[Drone]) -> None:
         if self._state == DroneState.ARRIVED:

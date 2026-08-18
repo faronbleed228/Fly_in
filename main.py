@@ -15,19 +15,23 @@ logging.basicConfig(
 
 def main():
 
-    parser = fly_in.Parsing("01_linear_path.txt")
+    parser = fly_in.Parsing("02_circular_loop.txt")
     try:
         parser.dispatcher()
     except fly_in.ParsingError as e:
         print(e)
     graph = parser._graph
+    zone_list = [zone for zone in graph._zone_dict.values()]
+    pathfinder = fly_in.Pathfinder(
+        graph, zone_list, graph._connections_links, len(graph._drones_lst))
+    path = pathfinder.pathfinder()
     # print_zone_data(graph._zone_dict)
     # print_connection_data(graph._connections_links)
-    sim = fly_in.Simulation(graph)
-    for drone in graph._drones_lst:
-        sim.test_path(drone, graph._zone_dict)
+    # sim = fly_in.Simulation(graph)
+    # for drone in graph._drones_lst:
+    #   sim.test_path(drone, graph._zone_dict)
 
-    sim.run()
+    # sim.run()
 
 
 def print_zone_data(zone_dict: dict[str, fly_in.Zone]):
