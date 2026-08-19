@@ -117,10 +117,3 @@ class Simulation():
         for link in self._graph._connections_links:
             link._cur_link_capacity = 0
 
-    def test_path(self, drone: Drone, zone_dict: dict[str, Zone]) -> None:
-        zone_list = deque([zone for zone in zone_dict.values()
-                           if zone._hub_type != "start_hub"])
-        drone._path = zone_list
-        drone._turns_left = len(zone_list)
-        logger.info(
-            f"Drone:{drone._id} has {drone._turns_left} turn left.")

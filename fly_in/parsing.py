@@ -17,6 +17,8 @@ class Graph():
         self._drones_lst: list[Drone] = []
         self._coordinates: list = []
         self._connections: set[tuple[str, str]] = set()
+        self._start_zone: Zone
+        self.end_zone: Zone
         self._start = False
         self._end = False
         self.zone_factory = ZoneFactory()
@@ -50,6 +52,10 @@ class Graph():
         self.validate_zone(data_dict)
 
         zone = self.zone_factory.create(data_dict)
+        if zone._hub_type == "start_hub":
+            self._start_zone = zone
+        elif zone._hub_type == "end_hub":
+            self.end_zone = zone
         self._zone_dict[data_dict["name"]] = zone
 
     def validate_zone(self, data_dict: dict):
@@ -62,6 +68,7 @@ class Graph():
             raise ParsingError("Hub name already exists on line: ")
         if data_dict["hub_type"] == "start_hub":
             self.validate_start_end(True, False)
+
         if data_dict["hub_type"] == "end_hub":
             self.validate_start_end(False, True)
 
@@ -81,12 +88,10 @@ class Graph():
                 "(no line with one of them or both). line: ")
 
     def create_drones(self, nb_drones: int) -> None:
-        start_hub = self._zone_dict["start"]
-        end_hub = self._zone_dict["goal"]
         for i in range(nb_drones):
             id = "D" + str(i)
-            drone = Drone(id, start_hub, end_hub)
-            start_hub._drone_list.append(drone)
+            drone = Drone(id, self._start_zone, self.end_zone)
+            self._start_zone._drone_list.append(drone)
             self._drones_lst.append(drone)
 
 

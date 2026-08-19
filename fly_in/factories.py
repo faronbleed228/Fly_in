@@ -66,6 +66,8 @@ class Zone(ABC):
         return connection
 
     def active_drones(self) -> bool:
+        if self._hub_type == "start_hub" or self._hub_type == "end_hub":
+            return False
         for drone in self._drone_list:
             if drone._state is DroneState.ACTIVE:
                 return True
