@@ -3,8 +3,9 @@ from .factories import Zone
 from .parsing import Parsing, ParsingError, Graph
 from .simulation import Simulation
 from .pathfinding import Pathfinder, PathfindingError
+from .visualiser import Visualiser
 
 
 __all__ = ['ZoneFactory', 'DroneState', 'Drone', 'Connection',
            'Zone', 'Parsing', 'ParsingError', 'Graph', 'Simulation',
-           'Pathfinder', 'PathfindingError']
+           'Pathfinder', 'PathfindingError', 'Visualiser']

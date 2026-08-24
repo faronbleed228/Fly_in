@@ -15,7 +15,7 @@ logging.basicConfig(
 
 def main():
 
-    parser = fly_in.Parsing("maps/challenger/01_the_impossible_dream.txt")
+    parser = fly_in.Parsing("maps/hard/01_maze_nightmare.txt")
     try:
         parser.dispatcher()
     except fly_in.ParsingError as e:
@@ -33,6 +33,10 @@ def main():
     sim = fly_in.Simulation(graph)
 
     sim.run()
+    visualiser = fly_in.Visualiser(graph, zone_list)
+    print(visualiser.x_min, visualiser.x_max,
+          visualiser.y_min, visualiser.y_max)
+    visualiser.main_loop()
 
 
 def print_zone_data(zone_dict: dict[str, fly_in.Zone]):
