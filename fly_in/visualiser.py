@@ -1,5 +1,5 @@
 from .parsing import Graph
-from .factories import Zone, Connection
+from .factories import Zone, Connection, Drone
 import pygame
 import sys
 import logging
@@ -8,9 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class Visualiser():
-    def __init__(self, graph: Graph, zone_list: list[Zone]) -> None:
+    def __init__(self, graph: Graph, zone_list: list[Zone], drone_list: list[Drone], log_list: list[str]) -> None:
         self.graph = graph
         self.zone_list = zone_list
+        self.start_zone = graph._start_zone
+        self.drone_list = drone_list
+        self.log_list = log_list
 
         self.width = 1280
         self.height = 720
@@ -20,7 +23,7 @@ class Visualiser():
         self.margin = 200
         self.zone_dist = 30
 
-        self.base_r = max(min(150/len(zone_list), 30), 10)
+        self.base_r = max(min(150/len(zone_list), 30), 15)
         self.scale_factor = 1
 
         self.screen = pygame.display.set_mode(
@@ -31,9 +34,20 @@ class Visualiser():
         self.x_max = max(coord[0] for coord in self.graph._coordinates)
         self.y_max = max(coord[1] for coord in self.graph._coordinates)
 
+        self.hide_name: bool = False
+
+        self.drone_id_font: pygame.font.Font | None
+        self.drone_count_font: pygame.font.Font | None
+        self.name_font: pygame.font.Font | None
+
     def main_loop(self) -> None:
         pygame.init()
         clock = pygame.time.Clock()
+        self.drone_count_font = pygame.font.Font('freesansbold.ttf', 20)
+        self.drone_id_font = pygame.font.Font('freesansbold.ttf', 5)
+        self.name_font = pygame.font.Font(
+            'freesansbold.ttf', 10 * max(int(self.scale_factor), 1))
+
         pygame.display.set_caption("Drone Simulation")
 
         while (True):
@@ -49,12 +63,21 @@ class Visualiser():
                     if height < 480 or width < 640:
                         self.screen = pygame.display.set_mode(
                             (self.width, self.height), pygame.RESIZABLE)
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_n:
+                        self.hide_name = not self.hide_name
 
             self.screen.fill('azure3')
             self.draw_map()
 
             pygame.display.flip()
             clock.tick(60)
+
+    def draw_map(self) -> None:
+        # draw_menu()
+        self.draw_connections()
+        self.draw_zones()
+        self.render_drones(True)
 
     def to_screen(self, x: int, y: int) -> list[float]:
         if self.x_min == self.x_max:
@@ -72,27 +95,36 @@ class Visualiser():
             normalised_y * (self.height - self.margin * 2)
         return ([ret_x, ret_y])
 
-    def draw_map(self) -> None:
-        self.draw_connections()
-        self.draw_zones()
+    def draw_menu(self) -> None:
+        
 
     def draw_zones(self) -> None:
 
         final_radius = self.base_r * self.scale_factor
-        font = pygame.font.Font(
-            'freesansbold.ttf', 10 * max(int(self.scale_factor), 1))
+
         for zone in self.zone_list:
+            start_end_scale = 0
+            name_offset = 6
             logger.info(f"Drawing zone {zone._name}")
             x, y = self.to_screen(zone._x, zone._y)
             logger.info(f"x:{x}, y:{y}")
             color = self.get_color(zone)
             logger.info(f"Color: {color}")
-            label_surface = font.render(zone._name, True, 'white')
-            pygame.draw.circle(
-                self.screen, color, (x + self.zone_dist, y), final_radius)
-            rect = label_surface.get_rect()
-            rect.center = (int(x + self.zone_dist), int(y + final_radius + 6))
-            self.screen.blit(label_surface, rect)
+
+            if zone._hub_type == "start_hub" or zone._hub_type == "end_hub":
+                start_end_scale = 15
+                pygame.draw.circle(
+                    self.screen, color, (x + self.zone_dist, y), final_radius + start_end_scale)
+            else:
+                pygame.draw.circle(
+                    self.screen, color, (x + self.zone_dist, y), final_radius)
+            if self.hide_name is False:
+                label_surface = self.name_font.render(
+                    zone._name, True, 'white')
+                rect = label_surface.get_rect()
+                rect.center = (int(x + self.zone_dist),
+                               int(y + final_radius + name_offset + start_end_scale))
+                self.screen.blit(label_surface, rect)
 
     def draw_connections(self) -> None:
 
@@ -113,6 +145,25 @@ class Visualiser():
                                       start_y),
                                      (end_x + self.zone_dist,
                                       end_y),)
+
+    def render_drones(self, start: bool) -> None:
+        x, y = self.to_screen(self.start_zone._x, self.start_zone._y)
+        offset = 3
+        if start is True:
+            number = len(self.drone_list)
+
+            drone_count = self.drone_count_font.render(
+                str(number), True, "white")
+            rect = drone_count.get_rect()
+            rect.center = (int(x + self.zone_dist), int(y))
+            self.screen.blit(drone_count, rect)
+
+        for drone in self.graph._drones_lst:
+            drone_label = self.drone_id_font.render(drone._id, True, "black")
+            rect = drone_label.get_rect()
+            rect.center = (int(x), int(y))
+            drone_coords = ([x + offset, y + offset], [x+2 + offset])
+            pygame.draw.rect(self.screen, "darkgrey", ([]))
 
     def get_color(self, zone: Zone) -> str:
         color = zone._color

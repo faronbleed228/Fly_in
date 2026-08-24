@@ -22,20 +22,20 @@ def main():
         print(e)
     graph = parser._graph
     zone_list = [zone for zone in graph._zone_dict.values()]
+    drone_list = graph._drones_lst.copy()
+
     pathfinder = fly_in.Pathfinder(
         graph, zone_list, graph._connections_links, len(graph._drones_lst))
     try:
         pathfinder.main_circle()
     except fly_in.PathfindingError as e:
         print(e)
-    # print_zone_data(graph._zone_dict)
-    # print_connection_data(graph._connections_links)
-    sim = fly_in.Simulation(graph)
 
+    sim = fly_in.Simulation(graph)
     sim.run()
-    visualiser = fly_in.Visualiser(graph, zone_list)
-    print(visualiser.x_min, visualiser.x_max,
-          visualiser.y_min, visualiser.y_max)
+    log_list = sim.visual_log
+
+    visualiser = fly_in.Visualiser(graph, zone_list, drone_list, log_list)
     visualiser.main_loop()
 
 

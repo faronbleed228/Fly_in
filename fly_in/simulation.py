@@ -11,6 +11,7 @@ class Simulation():
         self._graph = graph
         self._drone_list = graph._drones_lst
         self.log_list: list[str] = []
+        self.visual_log: list[str] = []
 
     def run(self) -> None:
         while (self.check_simulation() is False):
@@ -104,6 +105,7 @@ class Simulation():
     def log_append(self, drone: Drone, dest_zone: str) -> None:
         drone_id = drone._id
         self.log_list.append(f"{drone_id}-{dest_zone}")
+        self.visual_log.append(f"{drone_id}-{dest_zone}")
 
     def reset_drone_status(self) -> None:
         for drone in self._drone_list:
@@ -116,4 +118,3 @@ class Simulation():
     def reset_link_status(self) -> None:
         for link in self._graph._connections_links:
             link._cur_link_capacity = 0
-
