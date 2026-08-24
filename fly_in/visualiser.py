@@ -36,9 +36,10 @@ class Visualiser():
 
         self.hide_name: bool = False
 
-        self.drone_id_font: pygame.font.Font | None
-        self.drone_count_font: pygame.font.Font | None
-        self.name_font: pygame.font.Font | None
+        self.drone_id_font: pygame.font.Font
+        self.drone_count_font: pygame.font.Font
+        self.name_font: pygame.font.Font
+        self.menu_font: pygame.font.Font
 
     def main_loop(self) -> None:
         pygame.init()
@@ -47,6 +48,7 @@ class Visualiser():
         self.drone_id_font = pygame.font.Font('freesansbold.ttf', 5)
         self.name_font = pygame.font.Font(
             'freesansbold.ttf', 10 * max(int(self.scale_factor), 1))
+        self.menu_font = pygame.font.Font('freesansbold.ttf', 30)
 
         pygame.display.set_caption("Drone Simulation")
 
@@ -74,7 +76,7 @@ class Visualiser():
             clock.tick(60)
 
     def draw_map(self) -> None:
-        # draw_menu()
+        self.draw_menu()
         self.draw_connections()
         self.draw_zones()
         self.render_drones(True)
@@ -96,7 +98,12 @@ class Visualiser():
         return ([ret_x, ret_y])
 
     def draw_menu(self) -> None:
-        
+        menu_surface = pygame.surface.Surface((200, 200), pygame.SRCALPHA)
+        menu_surface.fill((108, 92, 120, 75))
+        self.screen.blit(menu_surface, (0, 0))
+        controls_surface = self.menu_font.render(
+            "N - hide/show zone names\nArrow right - one step forward\nArrow left - one step back", True, "black")
+        self.screen.blit(controls_surface, (10, 10))
 
     def draw_zones(self) -> None:
 
