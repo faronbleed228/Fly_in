@@ -147,11 +147,13 @@ class Parsing():
                             and metadata_list[0] != "zone"):
                         raise ParsingError(
                             f"Hub metadata type error on line {line_num}")
-                    if metadata_list[0] == "max_drones":
+                    if (metadata_list[0] == "max_drones" and
+                        (hub_data_dict["hub_type"] != "start_hub"
+                         and hub_data_dict["hub_type"] != "end_hub")):
                         max_drones = self.parse_pos_int(
                             metadata_list[1],
-                            f"Hub metadata(max_drones) \
-                                error on line {line_num}", True)
+                            ("Hub metadata(max_drones)"
+                                f"error on line {line_num}"), True)
                         hub_data_dict["max_drones"] = max_drones
                     elif metadata_list[0] == "zone":
                         if (metadata_list[1] not in self.zone_list):
@@ -160,6 +162,8 @@ class Parsing():
                         zone = metadata_list[1]
                         hub_data_dict["zone"] = zone
                     elif metadata_list[0] == "color":
+                        if metadata_list[1].isalpha() is False:
+                            raise ParsingError(f"Color name error on line {line_num}")
                         color = metadata_list[1]
                         hub_data_dict["color"] = color
             else:
@@ -182,9 +186,10 @@ class Parsing():
             line_lst[3], f"Wrong Hub x,y Data Type format on line {line_num}")
         hub_data_dict["x"] = x
         hub_data_dict["y"] = y
+        hub_data_dict["hub_type"] = line_lst[0].strip(":")
+
         if len(line_lst) > 4:
             hub_metadata_validate()
-        hub_data_dict["hub_type"] = line_lst[0].strip(":")
         logger.debug(f"Created hub with this data {hub_data_dict}")
         try:
             self._graph.add_zone(hub_data_dict)

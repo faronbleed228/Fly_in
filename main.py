@@ -1,5 +1,6 @@
 import logging
 import fly_in
+from sys import stderr
 
 
 # mode="w" очищает и перезаписывает файл при каждом запуске
@@ -19,7 +20,8 @@ def main():
     try:
         parser.dispatcher()
     except fly_in.ParsingError as e:
-        print(e)
+        print(e, file=stderr)
+        return 1
 
     graph = parser._graph
     zone_list = [zone for zone in graph._zone_dict.values()]
@@ -30,7 +32,8 @@ def main():
     try:
         pathfinder.main_circle()
     except fly_in.PathfindingError as e:
-        print(e)
+        print(e, file=stderr)
+        return 1
 
     sim = fly_in.Simulation(graph)
     sim.run()
