@@ -1,5 +1,6 @@
 from .parsing import Graph
 from .factories import Zone, Connection, Drone
+from .simulation import Gamestate
 import pygame
 import sys
 import logging
@@ -8,12 +9,13 @@ logger = logging.getLogger(__name__)
 
 
 class Visualiser():
-    def __init__(self, graph: Graph, zone_list: list[Zone], drone_list: list[Drone], log_list: list[str]) -> None:
+    def __init__(self, graph: Graph, zone_list: list[Zone], drone_list: list[Drone], game_state: list[Gamestate]) -> None:
         self.graph = graph
         self.zone_list = zone_list
         self.start_zone = graph._start_zone
+        self.end_zone = graph.end_zone
         self.drone_list = drone_list
-        self.log_list = log_list
+        self.game_state = game_state
 
         self.width = 1280
         self.height = 720
@@ -35,6 +37,7 @@ class Visualiser():
         self.y_max = max(coord[1] for coord in self.graph._coordinates)
 
         self.hide_name: bool = False
+        self.cur_turn = 0
 
         self.drone_id_font: pygame.font.Font
         self.drone_count_font: pygame.font.Font
@@ -47,8 +50,8 @@ class Visualiser():
         self.drone_count_font = pygame.font.Font('freesansbold.ttf', 20)
         self.drone_id_font = pygame.font.Font('freesansbold.ttf', 5)
         self.name_font = pygame.font.Font(
-            'freesansbold.ttf', 10 * max(int(self.scale_factor), 1))
-        self.menu_font = pygame.font.Font('freesansbold.ttf', 30)
+            'freesansbold.ttf', 11 * max(int(self.scale_factor), 1))
+        self.menu_font = pygame.font.Font('freesansbold.ttf', 12)
 
         pygame.display.set_caption("Drone Simulation")
 
@@ -79,7 +82,7 @@ class Visualiser():
         self.draw_menu()
         self.draw_connections()
         self.draw_zones()
-        self.render_drones(True)
+        self.render_drones()
 
     def to_screen(self, x: int, y: int) -> list[float]:
         if self.x_min == self.x_max:
@@ -98,12 +101,18 @@ class Visualiser():
         return ([ret_x, ret_y])
 
     def draw_menu(self) -> None:
+        line_height = self.menu_font.get_linesize()
+        ofset = 0
+        swichers_list = [["N - hide/show zone names"],["Arrow right - one step forward"],["Arrow left - one step back"]]
+
         menu_surface = pygame.surface.Surface((200, 200), pygame.SRCALPHA)
         menu_surface.fill((108, 92, 120, 75))
         self.screen.blit(menu_surface, (0, 0))
-        controls_surface = self.menu_font.render(
-            "N - hide/show zone names\nArrow right - one step forward\nArrow left - one step back", True, "black")
-        self.screen.blit(controls_surface, (10, 10))
+        for line in swichers_list:
+            line = str(line)
+            line = line.strip("[']")
+            self.put_text_outline(100,10,line, self.menu_font,0,ofset + line_height)
+            ofset += 15
 
     def draw_zones(self) -> None:
 
@@ -126,12 +135,7 @@ class Visualiser():
                 pygame.draw.circle(
                     self.screen, color, (x + self.zone_dist, y), final_radius)
             if self.hide_name is False:
-                label_surface = self.name_font.render(
-                    zone._name, True, 'white')
-                rect = label_surface.get_rect()
-                rect.center = (int(x + self.zone_dist),
-                               int(y + final_radius + name_offset + start_end_scale))
-                self.screen.blit(label_surface, rect)
+                self.put_text_outline(x,y,zone._name,self.name_font,self.zone_dist,(final_radius + name_offset + start_end_scale))
 
     def draw_connections(self) -> None:
 
@@ -153,24 +157,35 @@ class Visualiser():
                                      (end_x + self.zone_dist,
                                       end_y),)
 
-    def render_drones(self, start: bool) -> None:
-        x, y = self.to_screen(self.start_zone._x, self.start_zone._y)
-        offset = 3
-        if start is True:
-            number = len(self.drone_list)
+    def render_drones(self) -> None:
+        snapshot = self.game_state[self.cur_turn].state_dict.items()
+        zone_capacity = {zone:0 for zone in self.zone_list if zone is not self.start_zone and zone is not self.end_zone}
+        start_count = 0
+        end_count = 0
+        for drone, pos in snapshot:
+            if pos is self.start_zone:
+                start_count+=1
+            elif pos is self.end_zone:
+                end_count+=1
+            else:
+                if isinstance(pos, Zone):
+                    self.render_drone_zone(drone, pos, 4)
+                elif isinstance(pos, Connection):
+                    pass
+        start_x, start_y = self.to_screen(self.start_zone._x, self.start_zone._y)
+        end_x, end_y = self.to_screen(self.end_zone._x, self.end_zone._y)
+        self.put_text_outline(start_x,start_y, str(start_count), self.drone_count_font, self.zone_dist)
+        self.put_text_outline(end_x,end_y, str(end_count), self.drone_count_font, self.zone_dist)
 
-            drone_count = self.drone_count_font.render(
-                str(number), True, "white")
-            rect = drone_count.get_rect()
-            rect.center = (int(x + self.zone_dist), int(y))
-            self.screen.blit(drone_count, rect)
 
-        for drone in self.graph._drones_lst:
-            drone_label = self.drone_id_font.render(drone._id, True, "black")
-            rect = drone_label.get_rect()
-            rect.center = (int(x), int(y))
-            drone_coords = ([x + offset, y + offset], [x+2 + offset])
-            pygame.draw.rect(self.screen, "darkgrey", ([]))
+
+    def render_drone_zone(self, drone:Drone,  zone:Zone, zone_cap:int) -> None:
+        if zone_cap <4:
+            pass
+        else:
+            zone_text = "+" + str(zone_cap)
+
+
 
     def get_color(self, zone: Zone) -> str:
         color = zone._color
@@ -181,3 +196,24 @@ class Visualiser():
         except ValueError:
             color = "black"
         return color
+
+    def put_text_outline(self, x:int , y:int, input:str, font: pygame.font.Font, x_offset:int = 0,
+                         y_offset:int = 0) -> None:
+        text = font.render(input, True, "white")
+        outline = font.render(input, True, (40,40,40))
+
+        text_rect = text.get_rect(center=(x + x_offset, y + y_offset))
+
+        for dx, dy in [
+            (-1, -1), (0, -1), (1, -1),
+            (-1,  0),          (1,  0),
+            (-1,  1), (0,  1), (1,  1)
+                ]:
+
+            outline_rect = text_rect.copy()
+            outline_rect.x += dx
+            outline_rect.y += dy
+
+            self.screen.blit(outline, outline_rect)
+
+        self.screen.blit(text, text_rect)

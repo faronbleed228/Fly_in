@@ -33,9 +33,9 @@ def main():
 
     sim = fly_in.Simulation(graph)
     sim.run()
-    log_list = sim.visual_log
+    game_state = sim.gamestate_list
 
-    visualiser = fly_in.Visualiser(graph, zone_list, drone_list, log_list)
+    visualiser = fly_in.Visualiser(graph, zone_list, drone_list, game_state)
     visualiser.main_loop()
 
 

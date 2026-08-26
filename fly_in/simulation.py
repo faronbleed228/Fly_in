@@ -1,17 +1,31 @@
 from .parsing import Graph
-from .factories import DroneState, Drone, Zone
+from .factories import DroneState, Drone, Zone, Connection
 from collections import deque, defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
 
 
+class Gamestate():
+    def __init__(self, drone_list: list[Drone]) -> None:
+        self.drone_list = drone_list
+
+        self.state_dict: dict[Drone, Connection| Zone] = self.save_state()
+
+    def save_state(self) -> dict[Drone, Connection| Zone]:
+        ret : dict[Drone, Connection | Zone] = {}
+        for drone in self.drone_list:
+            ret[drone] = drone._cur_pos
+        return ret
+
+
 class Simulation():
     def __init__(self, graph: Graph) -> None:
         self._graph = graph
         self._drone_list = graph._drones_lst
+        self._total_drone_list = graph._drones_lst.copy()
         self.log_list: list[str] = []
-        self.visual_log: list[str] = []
+        self.gamestate_list: list[Gamestate] = []
 
     def run(self) -> None:
         while (self.check_simulation() is False):
@@ -22,6 +36,9 @@ class Simulation():
             log_output = " ".join(self.log_list)
             self.log_list.clear()
             print(log_output)
+            self.gamestate_list.append(Gamestate(self._total_drone_list))
+
+
 
     def check_simulation(self) -> bool:
         return all(drone._state is DroneState.ARRIVED
@@ -105,7 +122,6 @@ class Simulation():
     def log_append(self, drone: Drone, dest_zone: str) -> None:
         drone_id = drone._id
         self.log_list.append(f"{drone_id}-{dest_zone}")
-        self.visual_log.append(f"{drone_id}-{dest_zone}")
 
     def reset_drone_status(self) -> None:
         for drone in self._drone_list:
