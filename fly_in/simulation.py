@@ -29,6 +29,7 @@ class Simulation():
 
     def run(self) -> None:
         while (self.check_simulation() is False):
+            self.gamestate_list.append(Gamestate(self._total_drone_list))
             intent_dict = self.collect_intentions()
             self.move_logic(intent_dict)
             self.reset_drone_status()
@@ -36,7 +37,8 @@ class Simulation():
             log_output = " ".join(self.log_list)
             self.log_list.clear()
             print(log_output)
-            self.gamestate_list.append(Gamestate(self._total_drone_list))
+        self.gamestate_list.append(Gamestate(self._total_drone_list))
+
 
 
 

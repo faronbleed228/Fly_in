@@ -15,11 +15,12 @@ logging.basicConfig(
 
 def main():
 
-    parser = fly_in.Parsing("maps/hard/01_maze_nightmare.txt")
+    parser = fly_in.Parsing("maps/easy/01_linear_path.txt")
     try:
         parser.dispatcher()
     except fly_in.ParsingError as e:
         print(e)
+
     graph = parser._graph
     zone_list = [zone for zone in graph._zone_dict.values()]
     drone_list = graph._drones_lst.copy()
@@ -36,7 +37,7 @@ def main():
     game_state = sim.gamestate_list
 
     visualiser = fly_in.Visualiser(graph, zone_list, drone_list, game_state)
-    visualiser.main_loop()
+    #visualiser.main_loop()
 
 
 def print_zone_data(zone_dict: dict[str, fly_in.Zone]):

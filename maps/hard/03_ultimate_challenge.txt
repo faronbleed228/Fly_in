@@ -1,5 +1,5 @@
 # Hard Level 3: THE ULTIMATE CHALLENGE - All tricks combined
-nb_drones: 5
+nb_drones: 15
 
 start_hub: start 0 0 [color=green]
 
@@ -10,7 +10,7 @@ hub: dist_gate3 1 0 [color=orange]
 
 # Layer 2: Dead end maze with loops
 hub: maze_trap1 1 2 [color=red]
-hub: maze_trap2 2 2 [color=red max_drones=9]
+hub: maze_trap2 2 2 [color=red max_drones=3]
 hub: maze_loop1 2 1 [color=purple max_drones=3]
 hub: maze_loop2 3 1 [color=purple max_drones=3]
 hub: maze_loop3 4 1 [color=purple max_drones=3]

@@ -91,6 +91,7 @@ class Graph():
         for i in range(nb_drones):
             id = "D" + str(i)
             drone = Drone(id, self._start_zone, self.end_zone)
+            drone._cur_pos = self._start_zone
             self._start_zone._drone_list.append(drone)
             self._drones_lst.append(drone)
 
