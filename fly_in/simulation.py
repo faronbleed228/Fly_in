@@ -1,6 +1,6 @@
 from .parsing import Graph
 from .factories import DroneState, Drone, Zone, Connection
-from collections import deque, defaultdict
+from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -10,10 +10,10 @@ class Gamestate():
     def __init__(self, drone_list: list[Drone]) -> None:
         self.drone_list = drone_list
 
-        self.state_dict: dict[Drone, Connection| Zone] = self.save_state()
+        self.state_dict: dict[Drone, Connection | Zone] = self.save_state()
 
-    def save_state(self) -> dict[Drone, Connection| Zone]:
-        ret : dict[Drone, Connection | Zone] = {}
+    def save_state(self) -> dict[Drone, Connection | Zone]:
+        ret: dict[Drone, Connection | Zone] = {}
         for drone in self.drone_list:
             ret[drone] = drone._cur_pos
         return ret
@@ -39,9 +39,6 @@ class Simulation():
             print(log_output)
         self.gamestate_list.append(Gamestate(self._total_drone_list))
 
-
-
-
     def check_simulation(self) -> bool:
         return all(drone._state is DroneState.ARRIVED
                    for drone in self._drone_list)
@@ -52,7 +49,8 @@ class Simulation():
             target_zone = drone._path[0]
             intent_dict[target_zone].append(drone)
             logger.info(
-                f"Added intention of drone: {drone._id} to zone: {target_zone._name}")
+                f"Added intention of drone: {drone._id} "
+                f"to zone: {target_zone._name}")
         return intent_dict
 
     def move_logic(self, intent_dict: defaultdict[Zone, list[Drone]]) -> None:
@@ -77,7 +75,8 @@ class Simulation():
                     f"Making decision for dest_zone: {dest_zone._name}")
                 if dest_zone.active_drones() is False:
                     logger.info(
-                        f"Zone: {dest_zone._name} doesnt have any active drones.")
+                        f"Zone: {dest_zone._name} "
+                        "doesnt have any active drones.")
                     decision = True
                     done_zone.append(dest_zone)
                     drone_list.sort(key=sort_drone)
@@ -85,7 +84,8 @@ class Simulation():
                         self.turn_logic(drone, dest_zone)
                 else:
                     logger.info(
-                        f"Zone: {dest_zone._name} was skipped due to having active drones.")
+                        f"Zone: {dest_zone._name} was "
+                        "skipped due to having active drones.")
             clear_intention()
 
     def turn_logic(self, drone: Drone, zone: Zone) -> None:
@@ -99,7 +99,8 @@ class Simulation():
             if zone.get_movement_cost() == 2:
                 if (drone._state is DroneState.ACTIVE):
                     logger.info(
-                        f"Drone:{drone._id} is confirmed and moved to {cur_link._name}(restricted_path)")
+                        f"Drone:{drone._id} is confirmed and "
+                        f"moved to {cur_link._name}(restricted_path)")
                     cur_link._cur_link_capacity += 1
                     drone.move_drone_restricted(cur_link)
                     self.log_append(drone, cur_link._name)
@@ -110,7 +111,8 @@ class Simulation():
 
             elif zone.get_movement_cost() != 2:
                 logger.info(
-                    f"Drone:{drone._id} is confirmed and moved via {cur_link._name}")
+                    f"Drone:{drone._id} is confirmed "
+                    f"and moved via {cur_link._name}")
                 cur_link._cur_link_capacity += 1
                 drone.move_drone()
                 self.log_append(drone, zone._name)
@@ -136,6 +138,9 @@ class Simulation():
             elif drone._state is DroneState.ARRIVED:
                 self._drone_list.remove(drone)
                 i = 0
+            elif (drone._state is DroneState.TRANSIT
+                  or drone._state is DroneState.ACTIVE):
+                i += 1
 
     def reset_link_status(self) -> None:
         for link in self._graph._connections_links:

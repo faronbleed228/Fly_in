@@ -1,6 +1,7 @@
 import logging
 import fly_in
 from sys import stderr
+import argparse
 
 
 # mode="w" очищает и перезаписывает файл при каждом запуске
@@ -14,9 +15,11 @@ logging.basicConfig(
 )
 
 
-def main():
+def main() -> int:
 
-    parser = fly_in.Parsing("maps/easy/02_simple_fork.txt")
+    parsarg = parse_arguments()
+
+    parser = fly_in.Parsing(parsarg.map_path)
     try:
         parser.dispatcher()
     except fly_in.ParsingError as e:
@@ -41,31 +44,15 @@ def main():
 
     visualiser = fly_in.Visualiser(graph, zone_list, drone_list, game_state)
     visualiser.main_loop()
+    return 0
 
 
-def print_zone_data(zone_dict: dict[str, fly_in.Zone]):
-    for zone in zone_dict.values():
-        print("Name:", zone._name)
-        print("Hub_type:", zone._hub_type)
-        print("Cur Capacity:", zone._cur_capacity)
-        print("Color:", zone._color)
-        print("Max Capacity:", zone._max_capacity)
-        print("X:", zone._x)
-        print("Y:", zone._y)
-        print("Connections:", zone._zone_connections)
-        print()
-
-
-def print_connection_data(con_list: list[fly_in.Connection]):
-    for connection in con_list:
-        print("Name:", connection._name)
-        print("Name hub_a:", connection.zone_a._name)
-        print("Name hub_b:", connection.zone_b._name)
-        print("Max link Capacity:", connection._max_link_capacity)
-        print("Cur Link Capacity:", connection._cur_link_capacity)
-        print()
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Fly-in: drone simulation")
+    parser.add_argument("map_path", type=str, help="Path to map file (.txt)")
+    parser.add_argument("-d", "--debug", action="store_true")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    logging.info("Main modul is up")
     main()

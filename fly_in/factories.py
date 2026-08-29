@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Any
 from enum import Enum
 from collections import deque
 import logging
@@ -19,6 +19,15 @@ class DroneState(Enum):
 class Connection():
     def __init__(self, name: str, zone_a: Zone, zone_b: Zone,
                  max_link_capacity: int = 1) -> None:
+        """Initializes a connection link between two zones.
+
+        Args:
+            name: Identifier/name of the connection link.
+            zone_a: The first connected zone.
+            zone_b: The second connected zone.
+            max_link_capacity: Maximum number of drones
+            allowed simultaneously on the link.
+        """
         self._name = name
         self.zone_a = zone_a
         self.zone_b = zone_b
@@ -31,6 +40,17 @@ class Zone(ABC):
     def __init__(self, name: str,
                  color: Optional[str], x: int,
                  y: int, max_drones: int, hub_type: str) -> None:
+        """Initializes the base attributes of a zone.
+
+        Args:
+            name: Name of the zone.
+            color: Optional color code/name for visual representation.
+            x: X-coordinate of the zone location.
+            y: Y-coordinate of the zone location.
+            max_drones: Maximum capacity of drones inside the zone.
+            hub_type: Type of the hub (e.g., 'start_hub',
+            'end_hub', or standard).
+        """
         self._name = name
         self._hub_type = hub_type
         self._color = color
@@ -44,18 +64,49 @@ class Zone(ABC):
 
     @abstractmethod
     def can_enter_zone(self) -> bool:
+        """Checks if a drone can enter this
+        zone based on its state and capacity.
+
+        Returns:
+            True if entry is permitted, False otherwise.
+        """
         pass
 
     @abstractmethod
     def get_movement_cost(self) -> float:
+        """Calculates the movement cost through this zone.
+
+        Returns:
+            The numeric movement cost.
+        """
         pass
 
     def can_enter_link(self, link: Connection) -> bool:
+        """Checks whether a given link currently
+        has available capacity for entry.
+
+        Args:
+            link: The connection link to check.
+
+        Returns:
+            True if the link has free capacity, False otherwise.
+        """
         if link._cur_link_capacity < link._max_link_capacity:
             return True
         return False
 
     def get_cur_link(self, drone: Drone) -> Connection:
+        """Retrieves the active connection link
+        between this zone and the drone's position.
+
+        Args:
+            drone: The drone whose current
+            link/connection needs to be determined.
+
+        Returns:
+            The Connection instance linking
+            the current zone and the drone's position.
+        """
         drone_zone = drone._cur_pos
         if isinstance(drone_zone, Connection):
             return drone_zone
@@ -146,7 +197,7 @@ class ZoneFactory():
             "priority": PriorityZone
         }
 
-    def create(self, data_dict: dict) -> Zone:
+    def create(self, data_dict: dict[str, Any]) -> Zone:
         name = data_dict["name"]
         hub_type = data_dict["hub_type"]
         x = data_dict["x"]
@@ -154,8 +205,16 @@ class ZoneFactory():
         color = data_dict.get("color", None)
         zone_type = data_dict.get("zone", "normal")
         max_drones = data_dict.get("max_drones", 1)
-        zone = self._zone_dict[zone_type](
-            name, color, x, y, max_drones, hub_type)
+        zone: Zone
+        match zone_type:
+            case "restricted":
+                zone = RestrictedZone(name, color, x, y, max_drones, hub_type)
+            case "normal":
+                zone = NormalZone(name, color, x, y, max_drones, hub_type)
+            case "blocked":
+                zone = BlockedZone(name, color, x, y, max_drones, hub_type)
+            case "priority":
+                zone = PriorityZone(name, color, x, y, max_drones, hub_type)
         return zone
 
 
@@ -189,7 +248,8 @@ class Drone():
     def move_drone_restricted(self, connection: Connection) -> None:
         if isinstance(self._cur_pos, Zone):
             logger.debug(
-                f"Drone {self._id} entered connection {connection._name} and has to wait there")
+                f"Drone {self._id} entered connection {connection._name} "
+                "and has to wait there")
             goal_zone = self._path[0]
             if self._cur_pos._hub_type != "start_hub":
                 self._cur_pos._cur_capacity -= 1
@@ -206,7 +266,8 @@ class Drone():
             self._turns_left -= 1
             self._cur_pos = goal_zone
             logger.debug(
-                f"Drone {self._id} left connection {connection._name} and entered restricted zone {goal_zone}")
+                f"Drone {self._id} left connection {connection._name} "
+                f"and entered restricted zone {goal_zone}")
             if goal_zone != self._end_hub:
                 self._state = DroneState.CONFIRMED
                 self._waiting = 0

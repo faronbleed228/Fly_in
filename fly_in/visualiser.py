@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 class Visualiser():
-    def __init__(self, graph: Graph, zone_list: list[Zone], drone_list: list[Drone], game_state: list[Gamestate]) -> None:
+    def __init__(self, graph: Graph, zone_list: list[Zone],
+                 drone_list: list[Drone], game_state: list[Gamestate]) -> None:
         self.graph = graph
         self.zone_list = zone_list
         self.start_zone = graph._start_zone
@@ -26,7 +27,7 @@ class Visualiser():
         self.zone_dist = 30
 
         self.base_r = max(min(150/len(zone_list), 30), 15)
-        self.scale_factor = 1
+        self.scale_factor: float = 1.0
 
         self.screen = pygame.display.set_mode(
             (self.width, self.height), pygame.RESIZABLE)
@@ -39,8 +40,8 @@ class Visualiser():
         self.hide_name: bool = False
         self.is_playing = False
         self.cur_time: int
-        self.last_turn_time:int
-        self.turn_speed:int = 1000
+        self.last_turn_time: int
+        self.turn_speed: int = 1000
         self.cur_turn = 0
 
         self.drone_id_font: pygame.font.Font
@@ -79,7 +80,8 @@ class Visualiser():
                 self.width = max(width, 1280)
                 self.height = max(height, 720)
                 self.scale_factor = min(
-                    self.width / self.origin_width, self.height / self.origin_height)
+                    self.width / self.origin_width,
+                    self.height / self.origin_height)
                 if height < 720 or width < 1280:
                     self.screen = pygame.display.set_mode(
                         (self.width, self.height), pygame.RESIZABLE)
@@ -90,7 +92,8 @@ class Visualiser():
                 elif event.key == pygame.K_n:
                     self.hide_name = not self.hide_name
                 elif event.key == pygame.K_RIGHT:
-                    if self.cur_turn != len(self.game_state) - 1 and self.is_playing is False:
+                    if (self.cur_turn != len(self.game_state) - 1
+                            and self.is_playing is False):
                         self.cur_turn += 1
                 elif event.key == pygame.K_LEFT:
                     if self.cur_turn != 0 and self.is_playing is False:
@@ -134,17 +137,21 @@ class Visualiser():
     def draw_menu(self) -> None:
         line_height = self.menu_font.get_linesize()
         ofset = 0
-        swichers_list = [["N - hide/show zone names"],["Arrow RIGHT - one step forward"],["Arrow LEFT - one step back"],
-                         ["Space - start/stop replay"], ["B - go to turn 0"], ["Arrow UP - speed up"],
+        swichers_list = [["N - hide/show zone names"],
+                         ["Arrow RIGHT - one step forward"],
+                         ["Arrow LEFT - one step back"],
+                         ["Space - start/stop replay"],
+                         ["B - go to turn 0"], ["Arrow UP - speed up"],
                          ["Arrow DOWN - slow down"]]
 
         menu_surface = pygame.surface.Surface((200, 150), pygame.SRCALPHA)
         menu_surface.fill((108, 92, 120, 75))
         self.screen.blit(menu_surface, (0, 0))
         for line in swichers_list:
-            line = str(line)
-            line = line.strip("[']")
-            self.put_text_outline(100,10,line, self.menu_font,0,ofset + line_height)
+            line_str = str(line)
+            line_str = line_str.strip("[']")
+            self.put_text_outline(
+                100, 10, line_str, self.menu_font, 0, ofset + line_height)
             ofset += 15
 
     def draw_zones(self) -> None:
@@ -160,12 +167,17 @@ class Visualiser():
             if zone._hub_type == "start_hub" or zone._hub_type == "end_hub":
                 start_end_scale = 15
                 pygame.draw.circle(
-                    self.screen, color, (x + self.zone_dist, y), final_radius + start_end_scale)
+                    self.screen, color, (x + self.zone_dist, y),
+                    final_radius + start_end_scale)
             else:
                 pygame.draw.circle(
                     self.screen, color, (x + self.zone_dist, y), final_radius)
             if self.hide_name is False:
-                self.put_text_outline(x,y,zone._name,self.name_font,self.zone_dist,(final_radius + name_offset + start_end_scale))
+                self.put_text_outline(int(x), int(y), zone._name,
+                                      self.name_font,
+                                      self.zone_dist,
+                                      int(final_radius + name_offset +
+                                          start_end_scale))
 
     def draw_connections(self) -> None:
         done_links: list[Connection] = []
@@ -188,20 +200,22 @@ class Visualiser():
 
     def render_drones(self) -> None:
         snapshot = self.game_state[self.cur_turn].state_dict.items()
-        zone_capacity = {zone: 0 for zone in self.zone_list if zone is not self.start_zone and zone is not self.end_zone}
+        zone_capacity = {
+            zone: 0 for zone in self.zone_list if zone
+            is not self.start_zone and zone is not self.end_zone}
         start_count = 0
         end_count = 0
 
         for drone, pos in snapshot:
             if pos is self.start_zone:
-                start_count+=1
+                start_count += 1
             elif pos is self.end_zone:
-                end_count+=1
+                end_count += 1
             else:
                 if isinstance(pos, Zone):
                     zone_capacity[pos] += 1
                 elif isinstance(pos, Connection):
-                    self.render_drone_connection(drone,pos)
+                    self.render_drone_connection(drone, pos)
 
         for drone, pos in snapshot:
             if pos is self.start_zone or pos is self.end_zone:
@@ -211,27 +225,30 @@ class Visualiser():
             elif isinstance(pos, Connection):
                 pass
 
-        start_x, start_y = self.to_screen(self.start_zone._x, self.start_zone._y)
+        start_x, start_y = self.to_screen(
+            self.start_zone._x, self.start_zone._y)
         end_x, end_y = self.to_screen(self.end_zone._x, self.end_zone._y)
-        self.put_text_outline(start_x,start_y, str(start_count), self.drone_count_font, self.zone_dist)
-        self.put_text_outline(end_x,end_y, str(end_count), self.drone_count_font, self.zone_dist)
+        self.put_text_outline(int(start_x), int(start_y), str(
+            start_count), self.drone_count_font, self.zone_dist)
+        self.put_text_outline(int(end_x), int(end_y), str(
+            end_count), self.drone_count_font, self.zone_dist)
 
-
-    def render_drone_connection(self, drone:Drone, connection:Connection) -> None:
-        zone_a  = connection.zone_a
+    def render_drone_connection(self, drone: Drone,
+                                connection: Connection) -> None:
+        zone_a = connection.zone_a
         zone_b = connection.zone_b
         zone_a_x, zone_a_y = self.to_screen(zone_a._x, zone_a._y)
         zone_b_x, zone_b_y = self.to_screen(zone_b._x, zone_b._y)
         x = zone_a_x + self.zone_dist + ((zone_a_x - zone_b_x) / 2 * -1)
         y = zone_a_y + ((zone_a_y - zone_b_y) / 2 * -1)
-        pygame.draw.polygon(self.screen, "azure4", ((x - 10,y), (x,y - 10), (x + 10, y), (x, y + 10)))
-        self.put_text_outline(x,y,drone._id, self.drone_id_font, 0, 0)
+        pygame.draw.polygon(self.screen, "azure4", ((
+            x - 10, y), (x, y - 10), (x + 10, y), (x, y + 10)))
+        self.put_text_outline(int(x), int(y), drone._id,
+                              self.drone_id_font, 0, 0)
 
-
-
-
-    def render_drone_zone(self, drone:Drone,  zone:Zone, zone_cap:int) -> None:
-        directions = [[-1,0], [0,-1], [1,0]]
+    def render_drone_zone(self, drone: Drone,
+                          zone: Zone, zone_cap: int) -> None:
+        directions = [[-1, 0], [0, -1], [1, 0]]
         zone_x, zone_y = self.to_screen(zone._x, zone._y)
         cur_radius = self.base_r * (self.scale_factor) + 15
         dron_counter = 0
@@ -241,16 +258,18 @@ class Visualiser():
                 x = self.zone_dist + zone_x + (dir_x * cur_radius)
                 y = zone_y + (dir_y * cur_radius)
 
-                pygame.draw.polygon(self.screen, "azure4", ((x - 10,y), (x,y - 10), (x + 10, y), (x, y + 10)))
-                self.put_text_outline(x,y,drone._id, self.drone_id_font, 0, 0)
+                pygame.draw.polygon(self.screen, "azure4", ((
+                    x - 10, y), (x, y - 10), (x + 10, y), (x, y + 10)))
+                self.put_text_outline(
+                    int(x), int(y), drone._id, self.drone_id_font, 0, 0)
                 dron_counter += 1
                 zone_cap -= 1
             else:
                 zone_text = "+" + str(zone_cap)
-                self.put_text_outline(zone_x, zone_y, zone_text, self.menu_font, self.zone_dist, 0)
+                self.put_text_outline(
+                    int(zone_x), int(zone_y), zone_text,
+                    self.menu_font, self.zone_dist, 0)
                 return
-
-
 
     def get_color(self, zone: Zone) -> str:
         color = zone._color
@@ -262,10 +281,11 @@ class Visualiser():
             color = "black"
         return color
 
-    def put_text_outline(self, x:int , y:int, input:str, font: pygame.font.Font, x_offset:int = 0,
-                         y_offset:int = 0) -> None:
+    def put_text_outline(self, x: int, y: int, input: str,
+                         font: pygame.font.Font, x_offset: int = 0,
+                         y_offset: int = 0) -> None:
         text = font.render(input, True, "white")
-        outline = font.render(input, True, (40,40,40))
+        outline = font.render(input, True, (40, 40, 40))
 
         text_rect = text.get_rect(center=(x + x_offset, y + y_offset))
 
@@ -273,7 +293,7 @@ class Visualiser():
             (-1, -1), (0, -1), (1, -1),
             (-1,  0),          (1,  0),
             (-1,  1), (0,  1), (1,  1)
-                ]:
+        ]:
 
             outline_rect = text_rect.copy()
             outline_rect.x += dx

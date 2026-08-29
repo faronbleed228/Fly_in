@@ -15,7 +15,7 @@ class Graph():
         self._zone_dict: dict[str, Zone] = {}
         self._connections_links: list[Connection] = []
         self._drones_lst: list[Drone] = []
-        self._coordinates: list = []
+        self._coordinates: list[list[int]] = []
         self._connections: set[tuple[str, str]] = set()
         self._start_zone: Zone
         self.end_zone: Zone
@@ -23,7 +23,7 @@ class Graph():
         self._end = False
         self.zone_factory = ZoneFactory()
 
-    def add_connection(self, data_dict: dict) -> None:
+    def add_connection(self, data_dict: dict[str, Any]) -> None:
         self.validate_connection(data_dict)
         name = data_dict["connection"]
         zone_a, zone_b = data_dict["connection"].split("-")
@@ -35,7 +35,7 @@ class Graph():
         zone_a._zone_connections.append(connection)
         zone_b._zone_connections.append(connection)
 
-    def validate_connection(self, data_dict: dict) -> None:
+    def validate_connection(self, data_dict: dict[str, Any]) -> None:
         zone_a, zone_b = data_dict["connection"].split("-")
         temp_tuple: tuple[str, str] = tuple(sorted((zone_b, zone_a)))
         if temp_tuple in self._connections:
@@ -48,7 +48,7 @@ class Graph():
             raise ParsingError("Connection must link different zones. line: ")
         self._connections.add(temp_tuple)
 
-    def add_zone(self, data_dict: dict):
+    def add_zone(self, data_dict: dict[str, Any]) -> None:
         self.validate_zone(data_dict)
 
         zone = self.zone_factory.create(data_dict)
@@ -58,7 +58,7 @@ class Graph():
             self.end_zone = zone
         self._zone_dict[data_dict["name"]] = zone
 
-    def validate_zone(self, data_dict: dict):
+    def validate_zone(self, data_dict: dict[str, Any]) -> None:
         coord = [data_dict["x"], data_dict["y"]]
         if (coord) in self._coordinates:
             raise ParsingError(
@@ -72,7 +72,7 @@ class Graph():
         if data_dict["hub_type"] == "end_hub":
             self.validate_start_end(False, True)
 
-    def validate_start_end(self, start: bool, end: bool):
+    def validate_start_end(self, start: bool, end: bool) -> None:
         if start is True and self._start is False:
             self._start = True
         elif end is True and self._end is False:
@@ -99,7 +99,7 @@ class Graph():
 class Parsing():
     def __init__(self, file_name: str) -> None:
         self._file_name: str = file_name
-        self._pars_dict: dict[str, Callable] = {
+        self._pars_dict: dict[str, Callable[[list[str], int], None]] = {
             "start_hub:": self.hub_validate,
             "end_hub:": self.hub_validate,
             "hub:": self.hub_validate,
@@ -163,7 +163,8 @@ class Parsing():
                         hub_data_dict["zone"] = zone
                     elif metadata_list[0] == "color":
                         if metadata_list[1].isalpha() is False:
-                            raise ParsingError(f"Color name error on line {line_num}")
+                            raise ParsingError(
+                                f"Color name error on line {line_num}")
                         color = metadata_list[1]
                         hub_data_dict["color"] = color
             else:
@@ -211,20 +212,20 @@ class Parsing():
     def connection_validate(self, line_lst: list[str], line_num: int) -> None:
         con_data_dict: dict[str, Any] = {}
 
-        def metadata_validate():
+        def metadata_validate() -> None:
             if (line_lst[2].startswith("[")
                     and line_lst[len(line_lst) - 1].endswith("]")):
                 for data in line_lst[2:]:
                     data = data.strip("[]")
-                    data = data.split("=")
-                    if len(data) != 2:
+                    data_list = data.split("=")
+                    if len(data_list) != 2:
                         raise ParsingError(
                             f"Connection metadata error on line {line_num}")
-                    if data[0] != "max_link_capacity":
+                    if data_list[0] != "max_link_capacity":
                         raise ParsingError(
                             f"Connection metadata error on line {line_num}")
                     max_link_capacity = self.parse_pos_int(
-                        data[1],
+                        data_list[1],
                         f"Connection metadata error on line {line_num}", True)
                     con_data_dict["max_link_capacity"] = max_link_capacity
             else:
@@ -248,11 +249,10 @@ class Parsing():
         except ParsingError as e:
             raise ParsingError(f"{e}{line_num}")
 
-    def nb_drones_validate(self, line_lst: list[str], line_num: int):
+    def nb_drones_validate(self, line_lst: list[str], line_num: int) -> None:
         if len(line_lst) != 2:
             raise ParsingError(
                 f"Nb_drones format error on line {line_num}")
         nb_drones = self.parse_pos_int(
             line_lst[1], f"Nb_drones quantity error on line {line_num}", True)
         self._nb_drones = nb_drones
-

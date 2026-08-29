@@ -27,7 +27,7 @@ class Pathfinder():
         self._penalty_factor: dict[Zone, float] = {
             zone: 0.0 for zone in self._zone_list}
 
-    def main_circle(self):
+    def main_circle(self) -> None:
         for drone in self._graph._drones_lst:
             path = self.pathfinder()
             if path is not None:
@@ -38,7 +38,7 @@ class Pathfinder():
             else:
                 raise PathfindingError("The map doesnt have a solution")
 
-    def pathfinder(self) -> list[Zone] | None:
+    def pathfinder(self) -> deque[Zone] | None:
         self.data_structure()
         self.paths[self.start_zone._name] = [self.start_zone]
         queue = [(0.0, self.start_zone._name)]
@@ -54,16 +54,18 @@ class Pathfinder():
                 self.path_occupation(cur_path)
                 self.increase_penalty(cur_path)
                 self.print_path(cur_path)
-                return cur_path
+                return deque(cur_path)
             if cur_dist > self._distances[cur_name]:
                 logger.debug(
-                    f"Path for zone {cur_name} already exists with dist {self._distances[cur_name]})")
+                    f"Path for zone {cur_name} already exists "
+                    f"with dist {self._distances[cur_name]})")
                 continue
             else:
                 neighbours = cur_zone.get_neighbours()
                 for zone in neighbours:
                     penalty = 1 * self._penalty_factor[zone]**2
-                    new_distance = cur_dist + penalty + zone.get_movement_cost()
+                    new_distance = (cur_dist + penalty
+                                    + zone.get_movement_cost())
                     if new_distance < self._distances[zone._name]:
                         logger.debug(
                             f"New path to {zone._name} is {new_distance}")
@@ -88,7 +90,8 @@ class Pathfinder():
 
     def path_occupation(self, path: list[Zone]) -> None:
         for cur_zone in path:
-            if cur_zone._hub_type == "start_hub" or cur_zone._hub_type == "end_hub":
+            if (cur_zone._hub_type == "start_hub"
+                    or cur_zone._hub_type == "end_hub"):
                 continue
             else:
                 self.zone_occupation[cur_zone] += 1
@@ -106,9 +109,11 @@ class Pathfinder():
                 if link is not None:
                     max_capacity = min(next_zone._max_capacity,
                                        link._max_link_capacity)
-                    self._penalty_factor[next_zone] = self.zone_occupation[next_zone] / max_capacity
+                    self._penalty_factor[next_zone] = (
+                        self.zone_occupation[next_zone] / max_capacity)
                     logger.info(
-                        f"Penalty factor for {next_zone._name} is {self._penalty_factor[next_zone]}")
+                        f"Penalty factor for {next_zone._name} "
+                        f"is {self._penalty_factor[next_zone]}")
 
     def get_penalty_link(self, zone_a: Zone,
                          zone_b: Zone) -> Connection | None:
@@ -117,7 +122,7 @@ class Pathfinder():
                 return link
         return None
 
-    def print_path(self, path: list[Zone]):
+    def print_path(self, path: list[Zone]) -> None:
         logger.info("Begging of path")
         for zone in path:
             logger.info(zone._name)
