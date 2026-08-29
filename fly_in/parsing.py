@@ -190,21 +190,24 @@ class Parsing():
             contains invalid syntax, unexpected blocks,
                 or missing requirements.
         """
-        with open(self._file_name) as fd:
-            for line_num, line in enumerate(fd, 1):
-                line_lst = line.split()
-                if not line_lst:
-                    continue
-                elif line.startswith("#"):
-                    continue
-                else:
-                    func = self._pars_dict.get(line_lst[0], None)
-                    if func is None:
-                        raise ParsingError(
-                            f"Unknown parsing block on line {line_num}")
-                    func(line_lst, line_num)
+        try:
+            with open(self._file_name) as fd:
+                for line_num, line in enumerate(fd, 1):
+                    line_lst = line.split()
+                    if not line_lst:
+                        continue
+                    elif line.startswith("#"):
+                        continue
+                    else:
+                        func = self._pars_dict.get(line_lst[0], None)
+                        if func is None:
+                            raise ParsingError(
+                                f"Unknown parsing block on line {line_num}")
+                        func(line_lst, line_num)
             self._graph.validate_start_end(False, False)
             self._graph.create_drones(self._nb_drones)
+        except FileNotFoundError:
+            raise ParsingError("File does not exists.")
 
     def hub_validate(self, line_lst: list[str], line_num: int) -> None:
         """Parses and validates a hub line definition, including its metadata.
