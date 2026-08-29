@@ -126,12 +126,16 @@ class Simulation():
         self.log_list.append(f"{drone_id}-{dest_zone}")
 
     def reset_drone_status(self) -> None:
-        for drone in self._drone_list:
+        i = 0
+        while i != len(self._drone_list):
+            drone = self._drone_list[i]
             if (drone._state is DroneState.WAITING
                     or drone._state is DroneState.CONFIRMED):
                 drone._state = DroneState.ACTIVE
+                i += 1
             elif drone._state is DroneState.ARRIVED:
                 self._drone_list.remove(drone)
+                i = 0
 
     def reset_link_status(self) -> None:
         for link in self._graph._connections_links:

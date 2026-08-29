@@ -16,7 +16,7 @@ logging.basicConfig(
 
 def main():
 
-    parser = fly_in.Parsing("maps/easy/01_linear_path.txt")
+    parser = fly_in.Parsing("maps/easy/02_simple_fork.txt")
     try:
         parser.dispatcher()
     except fly_in.ParsingError as e:
@@ -40,7 +40,7 @@ def main():
     game_state = sim.gamestate_list
 
     visualiser = fly_in.Visualiser(graph, zone_list, drone_list, game_state)
-    #visualiser.main_loop()
+    visualiser.main_loop()
 
 
 def print_zone_data(zone_dict: dict[str, fly_in.Zone]):

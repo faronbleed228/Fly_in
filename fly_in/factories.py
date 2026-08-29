@@ -178,7 +178,7 @@ class Drone():
             zone._drone_list.append(self)
             self._cur_pos = zone
             self._turns_left -= 1
-            if zone != self._end_hub:
+            if zone._hub_type != self._end_hub._hub_type:
                 zone._cur_capacity += 1
 
                 self._state = DroneState.CONFIRMED

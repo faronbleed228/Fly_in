@@ -256,18 +256,3 @@ class Parsing():
             line_lst[1], f"Nb_drones quantity error on line {line_num}", True)
         self._nb_drones = nb_drones
 
-
-def test():
-    parser = Parsing("01_linear_path.txt")
-    try:
-        parser.dispatcher()
-    except ParsingError as e:
-        print(e)
-    graph = parser._graph
-    print(graph._zone_dict)
-    print(graph._drones_lst)
-    print(graph._coordinates)
-
-
-if __name__ == "__main__":
-    test()
