@@ -9,12 +9,26 @@ logger = logging.getLogger(__name__)
 
 class PathfindingError(Exception):
     def __init__(self, message: str) -> None:
+        """Initializes a pathfinding exception with an error message.
+
+        Args:
+            message: Descriptive error message explaining the routing failure.
+        """
         super().__init__(message)
 
 
 class Pathfinder():
     def __init__(self, graph: Graph, zone_list: list[Zone],
                  link_list: list[Connection], n_drones: int) -> None:
+        """Initializes the pathfinding engine with
+        graph topology and tracking structures.
+
+        Args:
+            graph: The network graph containing drones and zones.
+            zone_list: List of all available zones in the network.
+            link_list: List of all connection links between zones.
+            n_drones: Total number of drones to route.
+        """
         self._graph = graph
         self._zone_list = zone_list
         self.start_zone: Zone
@@ -28,6 +42,13 @@ class Pathfinder():
             zone: 0.0 for zone in self._zone_list}
 
     def main_circle(self) -> None:
+        """Executes the main routing loop,
+        assigning paths and turn counts to all drones.
+
+        Raises:
+            PathfindingError: If no valid
+            path to the end hub exists for any drone.
+        """
         for drone in self._graph._drones_lst:
             path = self.pathfinder()
             if path is not None:
@@ -39,6 +60,16 @@ class Pathfinder():
                 raise PathfindingError("The map doesnt have a solution")
 
     def pathfinder(self) -> deque[Zone] | None:
+        """Finds the optimal path from start to
+        end hub using a modified Dijkstra's algorithm.
+
+        The search accounts for base movement
+        costs as well as dynamic congestion penalties.
+
+        Returns:
+            A deque of Zone objects representing
+            the found path, or None if no path exists.
+        """
         self.data_structure()
         self.paths[self.start_zone._name] = [self.start_zone]
         queue = [(0.0, self.start_zone._name)]
@@ -78,6 +109,8 @@ class Pathfinder():
         return None
 
     def data_structure(self) -> None:
+        """Initializes distance tables and identifies
+        the start and end hubs."""
         for zone in self._zone_list:
             if zone._hub_type == "start_hub":
                 self.start_zone = zone
@@ -89,6 +122,12 @@ class Pathfinder():
                 self._distances[zone._name] = float('inf')
 
     def path_occupation(self, path: list[Zone]) -> None:
+        """Increments the recorded occupation count
+        for intermediate zones along a chosen path.
+
+        Args:
+            path: List of zones comprising the selected route.
+        """
         for cur_zone in path:
             if (cur_zone._hub_type == "start_hub"
                     or cur_zone._hub_type == "end_hub"):
@@ -97,7 +136,12 @@ class Pathfinder():
                 self.zone_occupation[cur_zone] += 1
 
     def increase_penalty(self, path: list[Zone]) -> None:
+        """Recalculates congestion penalties for
+        zones along the path based on capacity limits.
 
+        Args:
+            path: List of zones comprising the selected route.
+        """
         for i in range(len(path) - 1):
             cur_zone = path[i]
             next_zone = path[i+1]
@@ -117,12 +161,27 @@ class Pathfinder():
 
     def get_penalty_link(self, zone_a: Zone,
                          zone_b: Zone) -> Connection | None:
+        """Retrieves the direct connection link between two adjacent zones.
+
+        Args:
+            zone_a: The origin zone.
+            zone_b: The destination zone.
+
+        Returns:
+            The Connection instance connecting both
+            zones, or None if no direct link exists.
+        """
         for link in zone_a._zone_connections:
             if link.zone_b == zone_b or link.zone_a == zone_b:
                 return link
         return None
 
     def print_path(self, path: list[Zone]) -> None:
+        """Logs the ordered sequence of zone names for a given route.
+
+        Args:
+            path: List of zones in the route.
+        """
         logger.info("Begging of path")
         for zone in path:
             logger.info(zone._name)

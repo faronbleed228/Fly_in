@@ -41,9 +41,13 @@ def main() -> int:
     sim = fly_in.Simulation(graph)
     sim.run()
     game_state = sim.gamestate_list
-
-    visualiser = fly_in.Visualiser(graph, zone_list, drone_list, game_state)
-    visualiser.main_loop()
+    try:
+        visualiser = fly_in.Visualiser(
+            graph, zone_list, drone_list, game_state)
+        visualiser.main_loop()
+    except KeyboardInterrupt:
+        visualiser.quit()
+        raise KeyboardInterrupt
     return 0
 
 
@@ -55,4 +59,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\npooof..")

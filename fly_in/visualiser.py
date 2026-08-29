@@ -11,6 +11,14 @@ logger = logging.getLogger(__name__)
 class Visualiser():
     def __init__(self, graph: Graph, zone_list: list[Zone],
                  drone_list: list[Drone], game_state: list[Gamestate]) -> None:
+        """Initializes the Pygame-based GUI visualizer for the drone network.
+
+        Args:
+            graph: The network graph topology containing zones and connections.
+            zone_list: List of all zones to be drawn.
+            drone_list: List of drones in the simulation.
+            game_state: Chronological sequence of simulation state snapshots.
+        """
         self.graph = graph
         self.zone_list = zone_list
         self.start_zone = graph._start_zone
@@ -50,6 +58,8 @@ class Visualiser():
         self.menu_font: pygame.font.Font
 
     def main_loop(self) -> None:
+        """Initializes the Pygame context
+        and runs the main interactive render loop."""
         pygame.init()
         clock = pygame.time.Clock()
         self.drone_count_font = pygame.font.Font('freesansbold.ttf', 20)
@@ -72,8 +82,11 @@ class Visualiser():
             clock.tick(60)
 
     def event_handling(self) -> None:
+        """Handles user inputs including
+        keyboard shortcuts and window resizing events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                pygame.quit()
                 sys.exit()
             if event.type == pygame.VIDEORESIZE:
                 width, height = event.size
@@ -106,6 +119,8 @@ class Visualiser():
                     self.turn_speed -= 200
 
     def replay(self) -> None:
+        """Advances the simulation turn
+        automatically when replay mode is active."""
         if self.is_playing is True:
             self.cur_time = pygame.time.get_ticks()
             if self.cur_turn == len(self.game_state) - 1:
@@ -115,12 +130,24 @@ class Visualiser():
                 self.last_turn_time = pygame.time.get_ticks()
 
     def draw_map(self) -> None:
+        """Renders the entire scene including
+        the control menu, links, zones, and drones."""
         self.draw_menu()
         self.draw_connections()
         self.draw_zones()
         self.render_drones()
 
     def to_screen(self, x: int, y: int) -> list[float]:
+        """Maps graph space coordinates (x, y)
+        to window screen pixel coordinates.
+
+        Args:
+            x: Raw X-coordinate in graph space.
+            y: Raw Y-coordinate in graph space.
+
+        Returns:
+            A list containing normalized [screen_x, screen_y] coordinates.
+        """
         if self.x_min == self.x_max:
             normalised_x = 0.5
         else:
@@ -135,6 +162,7 @@ class Visualiser():
         return ([ret_x, ret_y])
 
     def draw_menu(self) -> None:
+        """Draws the hotkey control and navigation menu overlay."""
         line_height = self.menu_font.get_linesize()
         ofset = 0
         swichers_list = [["N - hide/show zone names"],
@@ -155,7 +183,7 @@ class Visualiser():
             ofset += 15
 
     def draw_zones(self) -> None:
-
+        """Renders all zones as circles and optionally displays their names."""
         final_radius = self.base_r * self.scale_factor
 
         for zone in self.zone_list:
@@ -180,6 +208,7 @@ class Visualiser():
                                           start_end_scale))
 
     def draw_connections(self) -> None:
+        """Draws the connection links between zones as lines on the screen."""
         done_links: list[Connection] = []
         for zone in self.zone_list:
             for connection in zone._zone_connections:
@@ -199,6 +228,8 @@ class Visualiser():
                                       end_y),)
 
     def render_drones(self) -> None:
+        """Renders drones at their current
+        positions for the active turn snapshot."""
         snapshot = self.game_state[self.cur_turn].state_dict.items()
         zone_capacity = {
             zone: 0 for zone in self.zone_list if zone
@@ -235,6 +266,12 @@ class Visualiser():
 
     def render_drone_connection(self, drone: Drone,
                                 connection: Connection) -> None:
+        """Draws a drone positioned in transit on a connection link.
+
+        Args:
+            drone: The drone in transit.
+            connection: The connection link on which the drone is located.
+        """
         zone_a = connection.zone_a
         zone_b = connection.zone_b
         zone_a_x, zone_a_y = self.to_screen(zone_a._x, zone_a._y)
@@ -248,6 +285,14 @@ class Visualiser():
 
     def render_drone_zone(self, drone: Drone,
                           zone: Zone, zone_cap: int) -> None:
+        """Draws a drone positioned around a zone or
+        an overflow indicator if capacity is exceeded.
+
+        Args:
+            drone: The drone to render.
+            zone: The zone in which the drone is located.
+            zone_cap: Remaining count of drones in this zone left to render.
+        """
         directions = [[-1, 0], [0, -1], [1, 0]]
         zone_x, zone_y = self.to_screen(zone._x, zone._y)
         cur_radius = self.base_r * (self.scale_factor) + 15
@@ -272,6 +317,14 @@ class Visualiser():
                 return
 
     def get_color(self, zone: Zone) -> str:
+        """Resolves the valid Pygame color identifier for a given zone.
+
+        Args:
+            zone: The zone whose display color is needed.
+
+        Returns:
+            A string representing a valid Pygame color name.
+        """
         color = zone._color
         if color is None:
             color = 'black'
@@ -284,6 +337,16 @@ class Visualiser():
     def put_text_outline(self, x: int, y: int, input: str,
                          font: pygame.font.Font, x_offset: int = 0,
                          y_offset: int = 0) -> None:
+        """Renders text with a dark outline for improved readability.
+
+        Args:
+            x: Target center X-coordinate.
+            y: Target center Y-coordinate.
+            input: Text string to render.
+            font: Pygame Font object used for rendering.
+            x_offset: Additional horizontal offset.
+            y_offset: Additional vertical offset.
+        """
         text = font.render(input, True, "white")
         outline = font.render(input, True, (40, 40, 40))
 
@@ -302,3 +365,6 @@ class Visualiser():
             self.screen.blit(outline, outline_rect)
 
         self.screen.blit(text, text_rect)
+
+    def quit(self) -> None:
+        pygame.quit()

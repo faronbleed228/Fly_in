@@ -56,17 +56,6 @@ debug:
 	@echo "==> [debug] Launching debugger (pdb) for map: $(MAP)"
 	@$(PYTHON) -m pdb main.py $(MAP)
 
-# Run Pygame graphic visualizer
-visualize:
-	@echo "==> [visualize] Launching graphical visualizer for map: $(MAP)"
-	@$(PYTHON) fly_in/visualiser.py $(MAP)
-
-# III.3: Run automated test suite with pytest
-test:
-	@echo "==> [test] Running test suite via pytest..."
-	@$(UV) run pytest -v
-	@echo "==> [test] All tests completed."
-
 # ============================================================================ #
 #                               CODE QUALITY                                   #
 # ============================================================================ #
@@ -118,9 +107,7 @@ help:
 	@echo "Available commands:"
 	@echo "  make install             Install dependencies and setup venv via uv"
 	@echo "  make run [MAP=path]      Run drone simulation on the target map"
-	@echo "  make visualize [MAP=path] Launch GUI visualizer"
 	@echo "  make debug [MAP=path]    Debug simulation with pdb"
-	@echo "  make test                Execute pytest suite"
 	@echo "  make lint                Run flake8 and mypy with subject flags"
 	@echo "  make lint-strict         Run mypy with --strict flag"
 	@echo "  make clean               Remove build and cache artifacts"

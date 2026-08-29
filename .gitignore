@@ -2,3 +2,4 @@ app.log
 .venv
 __pycache
 file.txt
+app.log

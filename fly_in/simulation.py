@@ -8,11 +8,22 @@ logger = logging.getLogger(__name__)
 
 class Gamestate():
     def __init__(self, drone_list: list[Drone]) -> None:
+        """Initializes a game state snapshot
+        recording current positions of drones.
+
+        Args:
+            drone_list: List of all drones to track in this state snapshot.
+        """
         self.drone_list = drone_list
 
         self.state_dict: dict[Drone, Connection | Zone] = self.save_state()
 
     def save_state(self) -> dict[Drone, Connection | Zone]:
+        """Captures and returns the current positions of all tracked drones.
+
+        Returns:
+            A mapping of each Drone instance to its current Zone or Connection.
+        """
         ret: dict[Drone, Connection | Zone] = {}
         for drone in self.drone_list:
             ret[drone] = drone._cur_pos
@@ -21,6 +32,13 @@ class Gamestate():
 
 class Simulation():
     def __init__(self, graph: Graph) -> None:
+        """Initializes the simulation
+        controller with the network graph and drones.
+
+        Args:
+            graph: The network graph
+            containing zones, links, and initialized drones.
+        """
         self._graph = graph
         self._drone_list = graph._drones_lst
         self._total_drone_list = graph._drones_lst.copy()
@@ -28,6 +46,8 @@ class Simulation():
         self.gamestate_list: list[Gamestate] = []
 
     def run(self) -> None:
+        """Runs the main turn-by-turn simulation
+        loop until all drones reach destination."""
         while (self.check_simulation() is False):
             self.gamestate_list.append(Gamestate(self._total_drone_list))
             intent_dict = self.collect_intentions()
@@ -40,10 +60,22 @@ class Simulation():
         self.gamestate_list.append(Gamestate(self._total_drone_list))
 
     def check_simulation(self) -> bool:
+        """Checks if the simulation has completed.
+
+        Returns:
+            True if all drones have reached their destination (state ARRIVED),
+            False otherwise.
+        """
         return all(drone._state is DroneState.ARRIVED
                    for drone in self._drone_list)
 
     def collect_intentions(self) -> defaultdict[Zone, list[Drone]]:
+        """Collects the next desired target
+        zones for all currently active drones.
+
+        Returns:
+            A dictionary grouping drones by their intended destination Zone.
+        """
         intent_dict: defaultdict[Zone, list[Drone]] = defaultdict(list)
         for drone in self._drone_list:
             target_zone = drone._path[0]
@@ -54,6 +86,13 @@ class Simulation():
         return intent_dict
 
     def move_logic(self, intent_dict: defaultdict[Zone, list[Drone]]) -> None:
+        """Resolves drone movement intentions
+        for the current turn based on availability.
+
+        Args:
+            intent_dict: Mapping of target zones
+            to lists of drones intending to move there.
+        """
         def sort_drone(drone: Drone) -> tuple[int, int]:
             if drone._state is DroneState.TRANSIT:
                 turns_left = -1
@@ -89,6 +128,13 @@ class Simulation():
             clear_intention()
 
     def turn_logic(self, drone: Drone, zone: Zone) -> None:
+        """Processes the turn action for a
+        single drone trying to enter a target zone.
+
+        Args:
+            drone: The drone attempting the movement.
+            zone: The target zone the drone wants to enter.
+        """
         cur_link = zone.get_cur_link(drone)
         if drone._state is DroneState.TRANSIT:
             cur_link._cur_link_capacity -= 1
@@ -124,10 +170,20 @@ class Simulation():
             drone._waiting += 1
 
     def log_append(self, drone: Drone, dest_zone: str) -> None:
+        """Appends a drone move event to the turn log.
+
+        Args:
+            drone: The drone that performed the movement.
+            dest_zone: Name of the destination zone or link.
+        """
         drone_id = drone._id
         self.log_list.append(f"{drone_id}-{dest_zone}")
 
     def reset_drone_status(self) -> None:
+        """Resets the state of waiting and
+        confirmed drones to ACTIVE for the next turn,
+        and removes arrived drones from the active pool.
+        """
         i = 0
         while i != len(self._drone_list):
             drone = self._drone_list[i]
@@ -143,5 +199,7 @@ class Simulation():
                 i += 1
 
     def reset_link_status(self) -> None:
+        """Resets the current link occupation
+        capacities back to zero at the end of the turn."""
         for link in self._graph._connections_links:
             link._cur_link_capacity = 0

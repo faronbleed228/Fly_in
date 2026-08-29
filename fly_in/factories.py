@@ -117,6 +117,13 @@ class Zone(ABC):
         return connection
 
     def active_drones(self) -> bool:
+        """Checks if there are any active drones currently inside the zone.
+
+        Hubs of type 'start_hub' and 'end_hub' are ignored and return False.
+
+        Returns:
+            True if at least one drone is in an ACTIVE state, False otherwise.
+        """
         if self._hub_type == "start_hub" or self._hub_type == "end_hub":
             return False
         for drone in self._drone_list:
@@ -125,6 +132,11 @@ class Zone(ABC):
         return False
 
     def get_neighbours(self) -> list[Zone]:
+        """Gets all neighbouring zones directly connected to this zone.
+
+        Returns:
+            A list of adjacent Zone instances.
+        """
         zone_list = []
         for link in self._zone_connections:
             if self is link.zone_a:
@@ -190,14 +202,20 @@ class BlockedZone(Zone):
 
 class ZoneFactory():
     def __init__(self) -> None:
-        self._zone_dict = {
-            "restricted": RestrictedZone,
-            "normal": NormalZone,
-            "blocked": BlockedZone,
-            "priority": PriorityZone
-        }
+        pass
 
     def create(self, data_dict: dict[str, Any]) -> Zone:
+        """Creates and returns a concrete Zone
+        instance based on configuration data.
+
+        Args:
+            data_dict: Dictionary containing zone configuration parameters
+                ('name', 'hub_type', 'x', 'y',
+                and optional 'color', 'zone', 'max_drones').
+
+        Returns:
+            An instantiated concrete Zone subclass.
+        """
         name = data_dict["name"]
         hub_type = data_dict["hub_type"]
         x = data_dict["x"]
@@ -220,6 +238,13 @@ class ZoneFactory():
 
 class Drone():
     def __init__(self, id: str, cur_pos: Zone, end_hub: Zone) -> None:
+        """Initializes a drone instance.
+
+        Args:
+            id: Unique identifier of the drone.
+            cur_pos: Starting zone or connection where the drone is spawned.
+            end_hub: Target destination zone (hub).
+        """
         self._id = id
         self._cur_pos: Zone | Connection = cur_pos
         self._end_hub = end_hub
@@ -229,6 +254,8 @@ class Drone():
         self._waiting = 0
 
     def move_drone(self) -> None:
+        """Moves the drone to the next zone in
+        its path and updates capacities/state."""
         zone = self._path.popleft()
         if isinstance(self._cur_pos, Zone):
             if self._cur_pos._hub_type != "start_hub":
@@ -246,6 +273,16 @@ class Drone():
                 self._state = DroneState.ARRIVED
 
     def move_drone_restricted(self, connection: Connection) -> None:
+        """Executes a two-phase movement through a restricted connection link.
+
+        In the first phase, enters the connection
+        link and switches state to TRANSIT.
+        In the second phase, leaves the connection
+        and enters the destination zone.
+
+        Args:
+            connection: The connection link used for restricted transit.
+        """
         if isinstance(self._cur_pos, Zone):
             logger.debug(
                 f"Drone {self._id} entered connection {connection._name} "
@@ -273,7 +310,3 @@ class Drone():
                 self._waiting = 0
             else:
                 self._state = DroneState.ARRIVED
-
-    def check_drone_state(self, drone_list: list[Drone]) -> None:
-        if self._state == DroneState.ARRIVED:
-            drone_list.remove(self)

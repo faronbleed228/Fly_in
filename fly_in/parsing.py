@@ -7,11 +7,17 @@ logger = logging.getLogger(__name__)
 
 class ParsingError(Exception):
     def __init__(self, message: str) -> None:
+        """Initializes a parsing exception with an error message.
+
+        Args:
+            message: Descriptive error message explaining the parsing failure.
+        """
         super().__init__(message)
 
 
 class Graph():
     def __init__(self) -> None:
+        """Initializes an empty graph representing the drone network."""
         self._zone_dict: dict[str, Zone] = {}
         self._connections_links: list[Connection] = []
         self._drones_lst: list[Drone] = []
@@ -24,6 +30,17 @@ class Graph():
         self.zone_factory = ZoneFactory()
 
     def add_connection(self, data_dict: dict[str, Any]) -> None:
+        """Validates and creates a connection link
+        between two zones in the graph.
+
+        Args:
+            data_dict: Dictionary containing connection parameters, including
+                'connection' (formatted as 'zoneA-zoneB')
+                and optional 'max_link_capacity'.
+
+        Raises:
+            ParsingError: If the connection data is invalid or duplicate.
+        """
         self.validate_connection(data_dict)
         name = data_dict["connection"]
         zone_a, zone_b = data_dict["connection"].split("-")
@@ -36,6 +53,17 @@ class Graph():
         zone_b._zone_connections.append(connection)
 
     def validate_connection(self, data_dict: dict[str, Any]) -> None:
+        """Validates that a connection links
+        two distinct, existing, and non-duplicate zones.
+
+        Args:
+            data_dict: Dictionary containing the connection string identifier.
+
+        Raises:
+            ParsingError: If the connection
+            already exists, links undefined zones,
+                or connects a zone to itself.
+        """
         zone_a, zone_b = data_dict["connection"].split("-")
         temp_tuple: tuple[str, str] = tuple(sorted((zone_b, zone_a)))
         if temp_tuple in self._connections:
@@ -49,6 +77,15 @@ class Graph():
         self._connections.add(temp_tuple)
 
     def add_zone(self, data_dict: dict[str, Any]) -> None:
+        """Validates, instantiates, and registers a zone in the graph.
+
+        Args:
+            data_dict: Dictionary containing zone configuration attributes.
+
+        Raises:
+            ParsingError: If coordinate/name
+            constraints or hub limit rules are violated.
+        """
         self.validate_zone(data_dict)
 
         zone = self.zone_factory.create(data_dict)
@@ -59,6 +96,17 @@ class Graph():
         self._zone_dict[data_dict["name"]] = zone
 
     def validate_zone(self, data_dict: dict[str, Any]) -> None:
+        """Validates that a zone has unique coordinates,
+        a unique name, and valid hub type rules.
+
+        Args:
+            data_dict: Dictionary containing
+            zone parameters (x, y, name, hub_type).
+
+        Raises:
+            ParsingError: If coordinates/name are
+            duplicated or start/end hub counts are invalid.
+        """
         coord = [data_dict["x"], data_dict["y"]]
         if (coord) in self._coordinates:
             raise ParsingError(
@@ -73,6 +121,16 @@ class Graph():
             self.validate_start_end(False, True)
 
     def validate_start_end(self, start: bool, end: bool) -> None:
+        """Ensures that the map has exactly one start and one end hub.
+
+        Args:
+            start: Flag indicating a start hub is being validated.
+            end: Flag indicating an end hub is being validated.
+
+        Raises:
+            ParsingError: If duplicate start/end
+            hubs are added, or if either is missing.
+        """
         if start is True and self._start is False:
             self._start = True
         elif end is True and self._end is False:
@@ -88,6 +146,11 @@ class Graph():
                 "(no line with one of them or both). line: ")
 
     def create_drones(self, nb_drones: int) -> None:
+        """Instantiates drone objects and places them at the start hub.
+
+        Args:
+            nb_drones: The total number of drones to create.
+        """
         for i in range(nb_drones):
             id = "D" + str(i)
             drone = Drone(id, self._start_zone, self.end_zone)
@@ -98,6 +161,11 @@ class Graph():
 
 class Parsing():
     def __init__(self, file_name: str) -> None:
+        """Initializes the parser for a given map configuration file.
+
+        Args:
+            file_name: Path to the configuration file to be parsed.
+        """
         self._file_name: str = file_name
         self._pars_dict: dict[str, Callable[[list[str], int], None]] = {
             "start_hub:": self.hub_validate,
@@ -114,6 +182,14 @@ class Parsing():
         self._nb_drones = 0
 
     def dispatcher(self) -> None:
+        """Reads the configuration file line
+        by line and dispatches parsing routines.
+
+        Raises:
+            ParsingError: If any line
+            contains invalid syntax, unexpected blocks,
+                or missing requirements.
+        """
         with open(self._file_name) as fd:
             for line_num, line in enumerate(fd, 1):
                 line_lst = line.split()
@@ -131,6 +207,16 @@ class Parsing():
             self._graph.create_drones(self._nb_drones)
 
     def hub_validate(self, line_lst: list[str], line_num: int) -> None:
+        """Parses and validates a hub line definition, including its metadata.
+
+        Args:
+            line_lst: Tokenized components of the hub line.
+            line_num: Current line number in the source file.
+
+        Raises:
+            ParsingError: If hub definition syntax,
+            naming, metadata, or coordinates are invalid.
+        """
         hub_data_dict: dict[str, Any] = {}
 
         def hub_metadata_validate() -> None:
@@ -199,6 +285,20 @@ class Parsing():
 
     def parse_pos_int(self, raw: str, e_msg: str,
                       only_pos: bool = False) -> int:
+        """Parses a string into an integer with optional positivity check.
+
+        Args:
+            raw: String representation of the integer.
+            e_msg: Custom error message to raise on validation failure.
+            only_pos: If True, values less than or equal to 0 raise an error.
+
+        Returns:
+            The parsed integer value.
+
+        Raises:
+            ParsingError: If parsing fails or
+            the positivity constraint is violated.
+        """
         try:
             num = int(raw)
         except ValueError:
@@ -210,6 +310,17 @@ class Parsing():
         return num
 
     def connection_validate(self, line_lst: list[str], line_num: int) -> None:
+        """Parses and validates a connection line
+        definition, including capacity metadata.
+
+        Args:
+            line_lst: Tokenized components of the connection line.
+            line_num: Current line number in the source file.
+
+        Raises:
+            ParsingError: If connection definition,
+            format, or metadata are invalid.
+        """
         con_data_dict: dict[str, Any] = {}
 
         def metadata_validate() -> None:
@@ -250,6 +361,16 @@ class Parsing():
             raise ParsingError(f"{e}{line_num}")
 
     def nb_drones_validate(self, line_lst: list[str], line_num: int) -> None:
+        """Parses and sets the number of drones defined in the configuration.
+
+        Args:
+            line_lst: Tokenized components of the drone count line.
+            line_num: Current line number in the source file.
+
+        Raises:
+            ParsingError: If formatting is incorrect or
+            the drone count is non-positive.
+        """
         if len(line_lst) != 2:
             raise ParsingError(
                 f"Nb_drones format error on line {line_num}")
