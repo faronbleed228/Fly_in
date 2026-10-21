@@ -1,6 +1,6 @@
 from .parsing import Graph
 from .factories import DroneState, Drone, Zone, Connection
-from collections import defaultdict
+from collections import defaultdict, Counter
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,9 @@ class Simulation():
             self.move_logic(intent_dict)
             self.reset_drone_status()
             self.reset_link_status()
+            self.validate_state()
+            if not self.log_list:
+                raise ValueError("Simulation stalled without any movement")
             log_output = " ".join(self.log_list)
             self.log_list.clear()
             print(log_output)
@@ -199,7 +202,33 @@ class Simulation():
                 i += 1
 
     def reset_link_status(self) -> None:
-        """Resets the current link occupation
-        capacities back to zero at the end of the turn."""
+        """Keep restricted-transit occupancy across turn boundaries.
+
+        Normal crossings consume a slot for this turn only; restricted drones
+        retain a slot until arrival on the following turn.
+        """
         for link in self._graph._connections_links:
-            link._cur_link_capacity = 0
+            link._cur_link_capacity = len(link._drone_list)
+
+    def validate_state(self) -> None:
+        """Check conservation, physical capacity and reserved destinations."""
+        positions = Counter(d._cur_pos for d in self._total_drone_list)
+        registered = []
+        for link in self._graph._connections_links:
+            registered.extend(link._drone_list)
+            if (positions[link] > link._max_link_capacity
+                    or link._cur_link_capacity != positions[link]):
+                raise ValueError(f"Invalid link occupancy: {link._name}")
+        for zone in self._graph._zone_dict.values():
+            registered.extend(zone._drone_list)
+            if zone._hub_type in ("start_hub", "end_hub"):
+                continue
+            reserved = sum(
+                d._state is DroneState.TRANSIT and d._path[0] is zone
+                for d in self._total_drone_list)
+            occupied = positions[zone] + reserved
+            if (occupied > zone._max_capacity
+                    or zone._cur_capacity != occupied):
+                raise ValueError(f"Invalid zone occupancy: {zone._name}")
+        if Counter(registered) != Counter(self._total_drone_list):
+            raise ValueError("Drone conservation violated")

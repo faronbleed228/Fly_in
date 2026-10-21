@@ -10,7 +10,7 @@ The simulation models real-world multi-agent routing challenges and physical bot
 - **Edge Concurrency:** Transit links constrain simultaneous bidirectional and pipeline traversal (`max_link_capacity`).
 - **Heterogeneous Movement Costs:** Zones feature variable transit dynamics, including standard costs, multi-turn delays in restricted airspace, priority corridors, and impassable obstacles.
 
-In strict compliance with 42 curriculum guidelines, the system is built completely from scratch in **Python 3.10+** without external graph packages (e.g., NetworkX). The codebase adheres to strict object-oriented design (OOP), passes comprehensive static type verification (`mypy --strict`), conforms to PEP 8 / PEP 257 standards, and provides both a headless CLI simulation engine and an interactive 2D graphical visualizer.
+In strict compliance with 42 curriculum guidelines, the system is built completely from scratch in **Python 3.12.13+** without external graph packages (e.g., NetworkX). The codebase adheres to strict object-oriented design (OOP), passes comprehensive static type verification (`mypy --strict`), conforms to PEP 8 / PEP 257 standards, and provides both a headless CLI simulation engine and an interactive 2D graphical visualizer.
 
 ---
 
@@ -58,8 +58,12 @@ Routing a drone fleet under node- and edge-capacity constraints without collisio
   - `blocked`: Permanently pruned from the routing graph.
 
 ### 2. Turn Scheduling & Deadlock Prevention
-- **Reservation Table (Space-Time Scheduling):** To guarantee conflict-free navigation, the scheduler uses space-time tracking `(location, turn)`. A drone only departs if its arrival trajectory respects the node’s `max_drones` capacity at turn $T$ and the connection's `max_link_capacity` during transit.
-- **Pipeline Progression (Convoys):** If Zone $A$ contains Drone 1 and Zone $B$ contains Drone 2, Drone 1 can move into Zone $B$ simultaneously as Drone 2 moves into Zone $C$, achieving optimal convoy throughput without stalling.
+- **Turn scheduling:** Each turn resolves intentions using destination capacity
+  and link occupancy. Restricted transitions reserve their destination and keep
+  their link occupied across the turn boundary. This is a heuristic scheduler;
+  it does not implement a time-expanded reservation table or prove minimum turns.
+- **Pipeline progression:** Departures can free zone capacity for arrivals in
+  the same turn.
 - **Restricted Corridor Invariant:** A drone is strictly prohibited from entering a restricted transit connection unless the target zone is guaranteed to have available capacity on turn $T + 1$ (hovering or waiting on connections is forbidden).
 
 ---
@@ -67,13 +71,13 @@ Routing a drone fleet under node- and edge-capacity constraints without collisio
 ## Instructions
 
 ### Prerequisites
-- Python 3.10 or higher
+- Python 3.12.13 or higher
 - `uv` (recommended modern Python package manager) or `pip`
 
 ### Installation
 Clone the repository and install all dependencies via `uv`:
 ```bash
-git clone <repository_url> Fly_in
+git clone https://github.com/faronbleed228/Fly_in.git
 cd Fly_in
 make install
 ```
@@ -167,10 +171,10 @@ D2-goal D3-goal
 
 ## Error Handling & Robustness
 
-In accordance with the **NO CRASHES** policy, the program never terminates with an unhandled exception or raw stack trace:
+Expected parser, pathfinding and simulation errors are reported to stderr with exit code 1. The public suite verifies a missing-map error; other unexpected exceptions may still produce a traceback:
 - **Deterministic Syntax Diagnostics:** The parser identifies line numbers and descriptive causes for syntax violations (e.g., negative coordinates, duplicate edges, invalid zone identifiers containing hyphens).
 - **Topological Invariants:** Disconnected graphs, cycles without path to `end_hub`, or maps with unreachable goals are gracefully caught and reported to `sys.stderr` with exit code `1`.
-- **Signal Gracefulness:** Clean interception of `SIGINT` (`Ctrl+C`), ensuring safe release of SDL and file descriptor handles without hanging threads or error codes.
+- **Signal Gracefulness:** Clean interception of `SIGINT` (`Ctrl+C`), ensuring safe release of SDL and file descriptor handles with exit code 130.
 
 ---
 
@@ -186,3 +190,21 @@ In compliance with Chapter II and Chapter VIII of the 42 Subject:
 - **Algorithmic Brainstorming:** Used AI as a Socratic dialogue partner to explore the trade-offs between static space-time reservation tables versus dynamic turn-by-turn scheduling for drone traffic coordination.
 - **Static Typing & Mypy Strictness:** Leveraged generative assistance to resolve complex structural typing edge cases (e.g., narrowing generic `Callable` signatures in parser command dispatchers and solving covariant type inference for abstract zone factories).
 - **Test Matrix Generation:** Used AI to brainstorm edge-case boundary scenarios (e.g., pipeline convoy contention, zero-capacity links, rapid `Ctrl+C` interrupt handling in Pygame).
+
+
+## Public regression checks
+
+```sh
+uv sync
+uv run python -m unittest discover -s tests -v
+uv run python main.py maps/easy/01_linear_path.txt --headless
+uv run flake8 main.py fly_in
+uv run mypy main.py fly_in --strict
+```
+
+The headless path does not import Pygame or create a display. Tests run all
+bundled maps, including both restricted-link regressions, with a process timeout.
+They check drone conservation, node/link capacities, destination reservations,
+and arrival. These checks do not establish global routing optimality.
+
+Maintenance fixes and public regression checks were prepared with OpenAI Codex on 2026-10-21.
