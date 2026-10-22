@@ -39,10 +39,17 @@ def main() -> int:
         return 1
 
     sim = fly_in.Simulation(graph)
-    sim.run()
+    try:
+        sim.run()
+    except ValueError as e:
+        print(e, file=stderr)
+        return 1
+    if parsarg.headless:
+        return 0
+    from fly_in.visualiser import Visualiser
     game_state = sim.gamestate_list
     try:
-        visualiser = fly_in.Visualiser(
+        visualiser = Visualiser(
             graph, zone_list, drone_list, game_state)
         visualiser.main_loop()
     except KeyboardInterrupt:
@@ -54,12 +61,15 @@ def main() -> int:
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fly-in: drone simulation")
     parser.add_argument("map_path", type=str, help="Path to map file (.txt)")
+    parser.add_argument("--headless", action="store_true",
+                        help="Run without importing or opening Pygame")
     parser.add_argument("-d", "--debug", action="store_true")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     try:
-        main()
+        raise SystemExit(main())
     except KeyboardInterrupt:
-        print("\npooof..", file=stderr)
+        print("\nInterrupted", file=stderr)
+        raise SystemExit(130)

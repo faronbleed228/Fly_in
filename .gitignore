@@ -3,3 +3,8 @@ app.log
 __pycache
 file.txt
 app.log
+
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
